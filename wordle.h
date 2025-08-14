@@ -4,9 +4,7 @@
 #include <stddef.h>
 
 #define NB_WORD (size_t) 14855
-const char* dataset[];
 #define NB_USED (size_t) 2315
-const char* used[];
 
 #define WORD_SIZE 5
 
@@ -17,9 +15,9 @@ struct Save
 
     int turn;
 
-    char know[5];
+    char know[WORD_SIZE];
     int misplaced;
-    int not_in;
+    int not_in[WORD_SIZE];
 };
 
 struct Score {
@@ -51,8 +49,8 @@ struct Input {
     char** argv;
 };
 
-inline int compact(char a) {
-    return 1 << (a % 32);
-}
+int compact(char a);
+
+void auto_fill(char* buffer, char* expect, char* result);
 
 #endif /* WORDLE_H */

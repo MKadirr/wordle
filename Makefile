@@ -12,14 +12,16 @@ SRC_REVERSE=reverse.c
 OBJ_REVERSE=${SRC_REVERSE:.c=.o}
 EXE_REVERSE=reverse.out
 
+CFLAGS=-Ofast
+
 all: solver reverse
 
 solver: ${OBJ} ${OBJ_SOLVER}
-	${CC} -O3 ${OBJ} ${OBJ_SOLVER} -o ${EXE_SOLVER}
+	${CC} ${CFLAGS} ${OBJ} ${OBJ_SOLVER} -o ${EXE_SOLVER}
 
 reverse: ${OBJ} ${OBJ_REVERSE}
-	${CC} -O3 ${OBJ} ${OBJ_REVERSE} -o ${EXE_REVERSE}
+	${CC} ${CFLAGS} ${OBJ} ${OBJ_REVERSE} -o ${EXE_REVERSE}
 
 clean:
-	${RM} ${OBJ_SOLVER} ${OBJ_REVERSE}
+	${RM} ${OBJ_SOLVER} ${OBJ_REVERSE} ${OBJ}
 	${RM} ${EXE_REVERSE} ${EXE_SOLVER}

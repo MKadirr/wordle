@@ -8,6 +8,9 @@
 #define NB_COMBI (3 * 3 * 3 * 3 * 3)
 #define NB_TENTA 6
 
+extern const char* dataset[];
+extern const char** used[];
+
 void init(struct Save *data, char *buffer, char *result)
 {
     for (int i = 0; i < NB_WORD; i++)
@@ -18,6 +21,10 @@ void init(struct Save *data, char *buffer, char *result)
         for (int j = 0; j < WORD_SIZE; j++) {
             data->word_data[i] |= compact(dataset[i][j]);
         }
+    }
+
+    for (int i = 0; i < WORD_SIZE; i++) {
+        data->not_in[i] = 0;
     }
 
     buffer[WORD_SIZE] = 0;
@@ -56,7 +63,7 @@ int valid_word(int word, struct Save *data)
     {
         int tmp = compact(dataset[word][i]);
 
-        if ((data->know[i] != 0 && data->know[i] != dataset[word][i]) || data->not_in & tmp)
+        if ((data->know[i] != 0 && data->know[i] != dataset[word][i]) || data->not_in[i] & tmp)
         {
             valid = 0;
         }
@@ -82,6 +89,9 @@ void update_available(struct Save *data)
 int update_state(struct Save *data, const char *buffer, char *result)
 {
     int ok = 0;
+
+    int already_m = 0;
+
     for (int i = 0; i < WORD_SIZE; i++)
     {
         switch (result[i])
@@ -92,11 +102,21 @@ int update_state(struct Save *data, const char *buffer, char *result)
             break;
 
         case 'n':
-            data->not_in |= compact(buffer[i]);
+            if (!(already_m & compact(buffer[i]))) {
+                for (int j = 0; j < WORD_SIZE; j++) {
+                    data->not_in[j] |= compact(buffer[i]);
+                }
+            }
+            else {
+                data->not_in[i] |= compact(buffer[i]);
+            }
+            
             break;
 
         case 'm':
             data->misplaced |= compact(buffer[i]);
+            already_m |= compact(buffer[i]);
+            data->not_in[i] |= compact(buffer[i]);
             break;
 
         default:
@@ -130,9 +150,9 @@ struct Score scores(struct Save *data, const char *buffer)
         for (int k = 0; k < WORD_SIZE; k++)
         {
             new_data.know[k] = data->know[k];
+            new_data.not_in[k] = data->not_in[k];
         }
         new_data.misplaced = data->misplaced;
-        new_data.not_in = data->not_in;
 
         result[0] = possibilite[a];
         result[1] = possibilite[b];
@@ -277,6 +297,7 @@ struct Param {
     char* real_word;
     int automat;
     int nb_thread;
+    int disable;
 };
 
 struct Param parse_arg(int argc, char** argv) {
@@ -314,6 +335,9 @@ struct Param parse_arg(int argc, char** argv) {
                 }
             }
         }
+        else if (!strcmp(argv[i], "-d")) {
+            ret.disable = 1;
+        }
         else {
             fprintf(stderr, "Unknown argument, '%s'", argv[i]);
             exit(1);
@@ -323,7 +347,7 @@ struct Param parse_arg(int argc, char** argv) {
     return ret;
 }
 
-int solver(int argc, char **argv, const char** dataset, size_t dataset_size)
+int main(int argc, char **argv)
 {
     printf("Hello world: %zu words possible\n", NB_WORD);
 
@@ -349,8 +373,13 @@ int solver(int argc, char **argv, const char** dataset, size_t dataset_size)
         int remaining = count_remaining(&data);
         int conseil = 0;
 
-        if (remaining > 2) {
+        if (!params.disable && remaining > 5) {
             conseil = find_best(&data, params.nb_thread);
+            printf("Select a word, %d remainings (recommanded = %s):\n", remaining, dataset[conseil]);
+        }
+        else if (!params.disable && remaining > 2) {
+            conseil = find_best(&data, params.nb_thread);
+            print_valid(&data);
             printf("Select a word, %d remainings (recommanded = %s):\n", remaining, dataset[conseil]);
         }
         else {
