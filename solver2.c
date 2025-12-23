@@ -3,6 +3,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
+#include <math.h>
+#include <time.h>
 
 #include "wordle.h"
 
@@ -11,15 +14,129 @@
 
 struct Param
 {
-    char *real_word;
+    const char *real_word;
     int automat;
     int nb_thread;
     int disable;
     int limited;
+    int prev;
+    int rand;
 };
 
 extern const char *dataset[];
 extern const char *used[];
+unsigned char mat[NB_WORD][NB_WORD];
+int combis[NB_WORD][NB_COMBI];
+
+unsigned char result_to_char(const char *buffer) {
+    unsigned char ret = 0;
+
+    for (size_t i = 0; i < WORD_SIZE; i++) {
+        ret *= 3;
+        switch (buffer[i]) {
+            case 'y':
+                ret += 0;
+                break;
+            case 'm':
+                ret += 1;
+                break;
+            case 'n':
+                ret += 2;
+                break;
+        }
+    }
+
+    if (ret >= NB_COMBI) {
+        printf("wtf: %s %d", buffer, ret);
+    }
+
+    return ret;
+}
+
+
+unsigned char get_combi(const char *buffer, const char *expect) {
+    char result[WORD_SIZE + 1];
+    
+    char tmp[WORD_SIZE + 1];
+    for (size_t i = 0; i < WORD_SIZE; i++) {
+        tmp[i] = expect[i];
+    }
+    
+    for (int i = 0; i < WORD_SIZE; i++) {
+        if (buffer[i] == tmp[i]) {
+            result[i] = 'y';
+        }
+        else {
+            int find = 0;
+            for (int j = 0; j < WORD_SIZE; j++) {
+                if (i != j && tmp[j] == buffer[i] && buffer[j] != tmp[j]) {
+                    find += 1;
+                    tmp[j] = 0;
+                    break;
+                }
+            }
+
+            result[i] = find ? 'm' : 'n';
+        }
+    }
+
+
+    return result_to_char(result);
+}
+
+struct initData {
+    size_t begin;
+    size_t end;
+    size_t j;
+};
+
+void *worker_init(void *arg)
+{
+    struct initData *data = (struct initData *)arg;
+
+    for (size_t i = data->begin; i < data->end; i++)
+    {
+        for (size_t j = 0; j < NB_WORD; j++) {
+            mat[i][j] = get_combi(dataset[i], dataset[j]);
+        }
+    }
+}
+
+void init_math(int nb_thread)
+{
+    struct initData *datas =
+        (struct initData *)calloc(sizeof(struct initData), nb_thread);
+
+    int repartition = NB_WORD / nb_thread;
+    int a = 0;
+
+    for (int i = 0; i < nb_thread; i++)
+    {
+        datas[i].begin = a;
+
+        a += repartition;
+
+        datas[i].end = a;
+    }
+
+    datas[nb_thread - 1].end = NB_WORD;
+
+    pthread_t *threads = (pthread_t *)calloc(sizeof(pthread_t), nb_thread);
+
+    for (int i = 0; i < nb_thread; i++)
+    {
+        pthread_create(&threads[i], NULL, worker_init, &datas[i]);
+    }
+
+
+    for (int i = 0; i < nb_thread; i++)
+    {
+        pthread_join(threads[i], NULL);
+    }
+
+    free(datas);
+    free(threads);
+}
 
 void init(struct Save *data, char *buffer, char *result, struct Param params)
 {
@@ -65,6 +182,22 @@ void init(struct Save *data, char *buffer, char *result, struct Param params)
             data->available[i] = data->from_wordle[i];
         }
     }
+
+    printf("Starting matrix: ");
+    init_math(params.nb_thread); 
+    printf("Done\n");
+
+    printf("Starting combis count: ");
+    for (size_t i = 0; i < NB_WORD; i++) {
+        for (size_t j = 0; j < NB_COMBI; j++) {
+            combis[i][j] = 0;
+        }
+
+        for (size_t j = 0; j < NB_WORD; j++) {
+            combis[i][mat[j][i]]++;
+        }
+    }
+    printf("Done\n");
 
     buffer[WORD_SIZE] = 0;
     result[WORD_SIZE] = 0;
@@ -114,56 +247,22 @@ struct Counter count_remaining(struct Save *data)
     return count;
 }
 
-int valid_word(int word, struct Save *data)
+void update_available(struct Save *data, const char *buffer, const char *result)
 {
-    if (!data->available[word]) {
-        return 0; 
-    }
-
-    for (int i = 0; i < WORD_SIZE; i++)
-    {
-        int tmp = compact(dataset[word][i]);
-
-        if ( data->know[i] != dataset[word][i] &&
-            (data->know[i] != 0 || data->not_in[i] & tmp))
-        {
-            // printf("invalid 1(%d): %s = %d | %d | %d || %d & %d \n",
-            //        i,
-            //        dataset[word], 
-            //        data->know[i] != 0,
-            //        data->know[i] != dataset[word][i],
-            //        data->not_in[i] & tmp,
-            //        data->not_in[i],
-            //        tmp
-            //    );
-
-            // for (char j = 'a'; j < 'z'; j++) {
-            // 
-            //    if (data->not_in[i] & compact(j)) {
-            //        printf("%c", j);
-            //    }
-            //}
-            //printf("\n");
-
-            return 0;
+    size_t tmp = NB_WORD + 1;
+    for (size_t i = 0; i < NB_WORD; i++) {
+        if (!strcmp(buffer, dataset[i])) {
+            tmp = i;
         }
     }
 
-    if ((data->word_data[word] & data->misplaced) != data->misplaced)
-    {
-        // printf("invalid 2: %s\n", dataset[word]);
-        return 0;
-    }
+    assert(tmp < NB_WORD);
 
-    return 1;
-} // eutar
+    const unsigned char combi = result_to_char(result);
 
-void update_available(struct Save *data)
-{
-    int valid = 0;
-    for (int i = 0; i < NB_WORD; i++)
+    for (size_t i = 0; i < NB_WORD; i++)
     {
-        data->available[i] &= valid_word(i, data);
+        data->available[i] &= combi == mat[tmp][i];
     }
 }
 
@@ -179,6 +278,10 @@ int update_state(struct Save *data, const char *buffer, char *result)
             ok += 1;
         }
     }
+
+    return ok;
+
+    // todo
 
     for (int i = 0; i < WORD_SIZE; i++)
     {
@@ -217,97 +320,48 @@ int update_state(struct Save *data, const char *buffer, char *result)
     return ok;
 }
 
-const char possibilite[] = { 'y', 'n', 'm' };
-
-char *possibilites[] = {
-    "yyyyy", "nyyyy", "myyyy", "ynyyy", "nnyyy", "mnyyy", "ymyyy", "nmyyy",
-    "mmyyy", "yynyy", "nynyy", "mynyy", "ynnyy", "nnnyy", "mnnyy", "ymnyy",
-    "nmnyy", "mmnyy", "yymyy", "nymyy", "mymyy", "ynmyy", "nnmyy", "mnmyy",
-    "ymmyy", "nmmyy", "mmmyy", "yyyny", "nyyny", "myyny", "ynyny", "nnyny",
-    "mnyny", "ymyny", "nmyny", "mmyny", "yynny", "nynny", "mynny", "ynnny",
-    "nnnny", "mnnny", "ymnny", "nmnny", "mmnny", "yymny", "nymny", "mymny",
-    "ynmny", "nnmny", "mnmny", "ymmny", "nmmny", "mmmny", "yyymy", "nyymy",
-    "myymy", "ynymy", "nnymy", "mnymy", "ymymy", "nmymy", "mmymy", "yynmy",
-    "nynmy", "mynmy", "ynnmy", "nnnmy", "mnnmy", "ymnmy", "nmnmy", "mmnmy",
-    "yymmy", "nymmy", "mymmy", "ynmmy", "nnmmy", "mnmmy", "ymmmy", "nmmmy",
-    "mmmmy", "yyyyn", "nyyyn", "myyyn", "ynyyn", "nnyyn", "mnyyn", "ymyyn",
-    "nmyyn", "mmyyn", "yynyn", "nynyn", "mynyn", "ynnyn", "nnnyn", "mnnyn",
-    "ymnyn", "nmnyn", "mmnyn", "yymyn", "nymyn", "mymyn", "ynmyn", "nnmyn",
-    "mnmyn", "ymmyn", "nmmyn", "mmmyn", "yyynn", "nyynn", "myynn", "ynynn",
-    "nnynn", "mnynn", "ymynn", "nmynn", "mmynn", "yynnn", "nynnn", "mynnn",
-    "ynnnn", "nnnnn", "mnnnn", "ymnnn", "nmnnn", "mmnnn", "yymnn", "nymnn",
-    "mymnn", "ynmnn", "nnmnn", "mnmnn", "ymmnn", "nmmnn", "mmmnn", "yyymn",
-    "nyymn", "myymn", "ynymn", "nnymn", "mnymn", "ymymn", "nmymn", "mmymn",
-    "yynmn", "nynmn", "mynmn", "ynnmn", "nnnmn", "mnnmn", "ymnmn", "nmnmn",
-    "mmnmn", "yymmn", "nymmn", "mymmn", "ynmmn", "nnmmn", "mnmmn", "ymmmn",
-    "nmmmn", "mmmmn", "yyyym", "nyyym", "myyym", "ynyym", "nnyym", "mnyym",
-    "ymyym", "nmyym", "mmyym", "yynym", "nynym", "mynym", "ynnym", "nnnym",
-    "mnnym", "ymnym", "nmnym", "mmnym", "yymym", "nymym", "mymym", "ynmym",
-    "nnmym", "mnmym", "ymmym", "nmmym", "mmmym", "yyynm", "nyynm", "myynm",
-    "ynynm", "nnynm", "mnynm", "ymynm", "nmynm", "mmynm", "yynnm", "nynnm",
-    "mynnm", "ynnnm", "nnnnm", "mnnnm", "ymnnm", "nmnnm", "mmnnm", "yymnm",
-    "nymnm", "mymnm", "ynmnm", "nnmnm", "mnmnm", "ymmnm", "nmmnm", "mmmnm",
-    "yyymm", "nyymm", "myymm", "ynymm", "nnymm", "mnymm", "ymymm", "nmymm",
-    "mmymm", "yynmm", "nynmm", "mynmm", "ynnmm", "nnnmm", "mnnmm", "ymnmm",
-    "nmnmm", "mmnmm", "yymmm", "nymmm", "mymmm", "ynmmm", "nnmmm", "mnmmm",
-    "ymmmm", "nmmmm", "mmmmm"
-};
-
-struct Score scores(struct Save *data, const char *buffer)
+struct Score scores(struct Save *data, size_t i)
 {
     double rep[NB_COMBI];
-    char result[WORD_SIZE + 1];
-    result[WORD_SIZE] = 0;
+    // char result[WORD_SIZE + 1];
+    // result[WORD_SIZE] = 0;
 
-    struct Save new_data = { data->available, data->from_wordle,
-                             data->word_data, data->scores, 0 };
+    // struct Save new_data = { data->available, data->from_wordle,
+    //                          data->word_data, data->scores, 0 };
 
-    for (int j = 0; j < NB_COMBI; j++)
-    {
-        new_data.available = data->available;
-        for (int k = 0; k < WORD_SIZE; k++)
-        {
-            new_data.know[k] = data->know[k];
-            new_data.not_in[k] = data->not_in[k];
-        }
-        new_data.misplaced = data->misplaced;
-
-        // printf("type: %s ", result);
-
-        update_state(&new_data, buffer, possibilites[j]);
-
+    for (size_t j = 0; j < NB_COMBI; j++) {
         rep[j] = 0;
-        for (int i = 0; i < NB_WORD; i++)
-        {
-            if (data->available[i] && (valid_word(i, &new_data)))
-            {
-                rep[j] += 1;
+    }
+
+    for (size_t j = 0; j < NB_WORD; j++) {
+        if (mat[j][i] >= NB_COMBI) {
+            printf("Something fuck up : %d\n", mat[j][i]);
+        }
+        else {
+            if (data->available[j]) {
+                rep[mat[j][i]] += 1;
             }
         }
-
-        // printf("%f ", rep[j]);
     }
-    /*
 
-    clean
-    taper
-    shame
-    quake
-
-    waste
-    crane
-    coate
-    plage
-
-    quake
-    slurp
-    nnmn
-*/
     // printf("] ");
     double sum = 0;
-    for (int i = 0; i < NB_COMBI; i++)
+
+    double E = 0.;
+
+    for (size_t i = 0; i < NB_COMBI; i++)
     {
         sum += rep[i];
+    }
+
+    double p = 0;
+    for (size_t i = 0; i < NB_COMBI; i++) {
+        if (rep[i] != 0) {
+            p = rep[i] / sum;
+            
+            E += p * log2(1. / p);
+            // printf("p = %f => E = %f\n", p, E);
+        }
     }
 
     double mean = sum / NB_COMBI;
@@ -337,6 +391,7 @@ struct Score scores(struct Save *data, const char *buffer)
     ret.mean = mean;
     ret.std = sum / NB_COMBI;
     ret.max = max;
+    ret.E = - E;
 
     return ret;
 }
@@ -348,13 +403,13 @@ void *worker(void *arg)
     double best_score = 10000000.0;
     int idx = -1;
 
-    for (int i = data->begin; i < data->end; i++)
+    for (size_t i = data->begin; i < data->end; i++)
     {
-        struct Score score_all = scores(data->data, dataset[i]);
+        struct Score score_all = scores(data->data, i);
 
-        double score = score_all.std;
+        double score = score_all.E;
         data->data->scores[i] = score;
-        // printf("%f\n", score);
+        //printf("%f\n", score);
         if (score < best_score)
         {
             best_score = score;
@@ -470,6 +525,13 @@ struct Param parse_arg(int argc, char **argv)
         {
             ret.limited = 1;
         }
+        else if (!strcmp(argv[i], "-p")) 
+        {
+            ret.prev = 1;
+        }
+        else if (!strcmp(argv[i], "-r")) {
+            ret.rand = 1;
+        }
         else
         {
             fprintf(stderr, "Unknown argument, '%s'\n", argv[i]);
@@ -500,16 +562,74 @@ int main(int argc, char **argv)
 
     init(&data, buffer, result, params);
 
-    int idx_guess = 0;
+    if (params.prev) {
+        printf("Please enter other's sequences\n");
+        printf("Press enter 2 times to change sequence and 3 times to stop\n");
 
-    for (int i = 0; i < NB_WORD; i++) {
-        if (!strcmp(dataset[i], "guess")) {
-            idx_guess = i;
-            break;
+        unsigned char combi[NB_COMBI];
+
+        unsigned char buffer[NB_WORD];
+   
+        char c = '\0';
+
+        int count = 0;
+        while (1) {
+            count = 0;
+            for (size_t i = 0; i < NB_COMBI; i++) {
+                combi[i] = 0;
+            }
+
+            while (1) {
+                c = getchar();
+                
+                if (c == '\n') {
+                    printf("break 2\n");
+                    break;
+                }
+
+                buffer[0] = c;
+                buffer[1] = getchar();
+                buffer[2] = getchar();
+                buffer[3] = getchar();
+                buffer[4] = getchar();
+
+                getchar();
+
+                combi[result_to_char(buffer)]++;
+                count++;
+            }
+
+            if (count == 0) {
+                printf("break 1\n");
+                break;
+            }
+
+            int count2 = 0;
+            for (size_t i = 0; i < NB_WORD; i++) {
+                for (size_t j = 0; j < NB_COMBI; j++) {
+                    if (data.available[i] && combis[i][j] < combi[j]) {
+                        // printf("removing word: %s\n" , dataset[i]);
+                        data.available[i] = 0;
+                        count2++;
+                    }
+                }
+            }
+
+            printf("removed %d word(s)\n", count2);
+
         }
+
+        printf("End of prev\n");
     }
 
-    printf("%d: %s", idx_guess, dataset[idx_guess]);
+    if (params.rand) {
+        srand(time(NULL));
+
+        int rand_val = rand() % NB_USED;
+        // printf("%d < %ld\n", rand_val, NB_USED);
+        params.real_word = used[rand_val];
+        printf("Word choosen: %s\n", params.real_word);
+    }
 
     int ok = 0;
     while (ok != WORD_SIZE && data.turn < NB_TENTA)
@@ -579,7 +699,7 @@ int main(int argc, char **argv)
 
         ok = update_state(&data, buffer, result);
 
-        update_available(&data);
+        update_available(&data, buffer, result);
 
         data.turn += 1;
 
@@ -587,7 +707,7 @@ int main(int argc, char **argv)
     }
 
     if (ok == WORD_SIZE)
-        printf("Weldone you found it!\n");
+        printf("Weldone you found it! En %d tenta.\n", data.turn);
     else
         printf("Sad ça passe pas\n");
 

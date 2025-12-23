@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <assert.h>
 
-void auto_fill(char* buffer, char* expect, char* result) {
+void auto_fill(const char* buffer, const char* expect, char* result) {
     assert(buffer != NULL);
     assert(expect != NULL);
     assert(result != NULL);
@@ -16,25 +16,21 @@ void auto_fill(char* buffer, char* expect, char* result) {
     }
     
     for (int i = 0; i < WORD_SIZE; i++) {
-        if (buffer[i] == expect[i]) {
+        if (buffer[i] == tmp[i]) {
             result[i] = 'y';
         }
         else {
             int find = 0;
             for (int j = 0; j < WORD_SIZE; j++) {
-                if (i != j && expect[j] == buffer[i] && buffer[j] != expect[j]) {
+                if (i != j && tmp[j] == buffer[i] && buffer[j] != tmp[j]) {
                     find += 1;
-                    expect[j] = 0;
+                    tmp[j] = 0;
                     break;
                 }
             }
 
             result[i] = find ? 'm' : 'n';
         }
-    }
-
-    for (size_t i = 0; i < WORD_SIZE; i++) {
-        expect[i] = tmp[i];
     }
 }
 

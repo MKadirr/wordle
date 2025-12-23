@@ -11,7 +11,9 @@
 struct Save
 {
     int *available;
+    int *from_wordle;
     int *word_data;
+    double *scores;
 
     int turn;
 
@@ -24,6 +26,7 @@ struct Score {
     double mean;
     double std;
     double max;
+    double E;
 };
 
 struct workData {
@@ -51,6 +54,6 @@ struct Input {
 
 int compact(char a);
 
-void auto_fill(char* buffer, char* expect, char* result);
+void auto_fill(const char* buffer, const char* expect, char* result);
 
 #endif /* WORDLE_H */
