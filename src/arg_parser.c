@@ -4,6 +4,24 @@
 
 #include "wordle.h"
 
+void print_help() {
+    printf("usage: ./solver [OPTIONS]\n");
+
+    
+
+    printf("OPTIONS:\n");
+    printf("    -a run the programme automatically by using the optimal word (dont work very well)\n");
+
+    printf("    -w WORD       run the programme and autocomplete he wordle answer\n");
+    printf("    -t NB_THREAD  use the given number of thread to compute heavy calculation\n");
+    printf("    -d            disable all computation, simple game of wordle\n");
+    printf("    --bench       run the benchmark code: not ready yet\n");
+    printf("    --hard        specify the hard deficulty to compute optimal word: NOT IMPLEMENTED\n");
+    printf("    --help        display that programme\n");
+    printf("    --limited     run the programme with only wordle used word: some of in your wordle game may not be in that list\n");
+    printf("    -p            enable the filtering using other grid to reduce possibilities\n");
+    printf("    -r            choose a random word for that game");
+}
 
 struct Param parse_arg(int argc, char **argv)
 {
@@ -66,6 +84,11 @@ struct Param parse_arg(int argc, char **argv)
         else if (!strcmp(argv[i], "--limited"))
         {
             ret.limited = 1;
+        } 
+        else if (!strcmp(argv[i], "--help"))
+        {
+            print_help();
+            exit(0);
         }
         else if (!strcmp(argv[i], "-p"))
         {
