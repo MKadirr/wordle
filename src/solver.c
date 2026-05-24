@@ -18,6 +18,41 @@ extern unsigned char mat[NB_WORD][NB_WORD];
 extern int combis[NB_WORD][NB_COMBI];
 extern struct Param params;
 
+struct Score scores(struct Save *data, size_t i);
+
+void copy_save(struct Save* src, struct Save* dst)
+{
+    // printf("copy\n");
+    memcpy(dst->available, src->available, sizeof(char) * NB_WORD);
+    memcpy(dst->from_wordle, src->from_wordle, sizeof(char) * NB_WORD);
+    
+    dst->turn = src->turn;
+}
+
+struct Save* clone_save(struct Save* value)
+{
+    // printf("clone\n");
+    struct Save* ret = calloc(1, sizeof(struct Save));
+    ret->available = calloc(NB_WORD, sizeof(char));
+    ret->from_wordle = calloc(NB_WORD, sizeof(char));
+
+    copy_save(value, ret);
+
+    return ret;
+}
+
+
+void free_save(struct Save* ptr)
+{
+    // printf("free\n");
+    if (ptr)
+    {
+        free(ptr->available);
+        free(ptr->from_wordle);
+        free(ptr);
+    }
+}
+
 unsigned char result_to_char(const char *buffer) {
     unsigned char ret = 0;
 
@@ -133,18 +168,8 @@ void init(struct Save *data, char *buffer, char *result, struct Param params)
     for (int i = 0; i < NB_WORD; i++)
     {
         data->available[i] = 1;
-
-        data->word_data[i] = 0;
-        for (int j = 0; j < WORD_SIZE; j++)
-        {
-            data->word_data[i] |= compact(dataset[i][j]);
-        }
     }
 
-    for (int i = 0; i < WORD_SIZE; i++)
-    {
-        data->not_in[i] = 0;
-    }
 
     size_t j = 0;
     for (size_t i = 0; i < NB_USED; i++)
@@ -212,6 +237,15 @@ void update_available(struct Save *data, const char *buffer, const char *result)
     }
 }
 
+
+void update_available2(struct Save *data, size_t idx, const unsigned char combi)
+{
+    for (size_t i = 0; i < NB_WORD; i++)
+    {
+        data->available[i] &= combi == mat[idx][i];
+    }
+}
+
 int update_state(struct Save *data, const char *buffer, char *result)
 {
     int ok = 0;
@@ -220,50 +254,45 @@ int update_state(struct Save *data, const char *buffer, char *result)
 
     for (int i = 0; i < WORD_SIZE; i++) {
         if (result[i] == 'y') {
-            data->know[i] = buffer[i];
             ok += 1;
         }
     }
 
     return ok;
+}
 
-    // todo
 
-    for (int i = 0; i < WORD_SIZE; i++)
+int find_best_thread_less(struct Save *status, size_t start, size_t end) {
+    status->best_score = 10000000.0;
+    // printf("1: %f\n", status->best_score);
+
+    int idx = -1;
+
+    // printf("0 ");
+    for (size_t i = start; i < end; i++)
     {
-        switch (result[i])
+        // if (params.hard > 0 && !valid_hard()) {
+        // TODO 
+        // }
+
+        struct Score score_all = scores(status, i);
+
+        double score = score_all.E;
+        
+        // printf("%s = %f\n", dataset[i], score);
+        if (score < status->best_score)
         {
-        case 'y':
-            break;
 
-        case 'n':
-            if (!(already_m & compact(buffer[i])))
-            {
-                for (int j = 0; j < WORD_SIZE; j++)
-                {
-                    data->not_in[j] |= compact(buffer[i]);
-                }
-            }
-            else
-            {
-                data->not_in[i] |= compact(buffer[i]);
-            }
-
-            break;
-
-        case 'm':
-            data->misplaced |= compact(buffer[i]);
-            already_m |= compact(buffer[i]);
-            data->not_in[i] |= compact(buffer[i]);
-            break;
-
-        default:
-            printf("You fucking moron that not a valid letter\n");
-            break;
+            // printf("2: %f => %f\n", status->best_score, score);
+            // printf("=> %f ", score);
+            status->best_score = score;
+            idx = i;
         }
     }
 
-    return ok;
+    // printf("%ld, %ld => %d, %f\n", start, end, idx, status->best_score);
+
+    return idx;
 }
 
 struct Score scores(struct Save *data, size_t i)
@@ -295,15 +324,34 @@ struct Score scores(struct Save *data, size_t i)
         sum += rep[i];
     }
 
+    struct Save* rec_save = clone_save(data);
+
     double p = 0;
-    for (size_t i = 0; i < NB_COMBI; i++) {
-        if (rep[i] != 0) {
-            p = rep[i] / sum;
-            
+    for (size_t j = 0; j < NB_COMBI; j++) {
+        if (rep[j] != 0) {
+            p = rep[j] / sum;
+
+            if (data->turn < NB_TENTA - NB_TENTA) {
+                printf("depth: %d, combi: %d,  word: %s, \n", data->turn, j, dataset[i]);
+
+                copy_save(data, rec_save);
+                rec_save->turn += 1;
+                update_available2(rec_save, i, (const unsigned char)j);
+
+                int best_idx = find_best_thread_less(rec_save, 0, NB_WORD);
+
+                // moins car le score sera negativé apres
+                E -= p * rec_save->best_score;
+
+            }
+
+
             E += p * log2(1. / p);
             // printf("p = %f => E = %f\n", p, E);
         }
     }
+
+    free_save(rec_save);
 
     double mean = sum / NB_COMBI;
     // printf("sum: %f, mean: %f ", sum, mean);
@@ -337,43 +385,12 @@ struct Score scores(struct Save *data, size_t i)
     return ret;
 }
 
-struct Save* copy_save(struct Save* value)
-{
-    
-}
-
-void free_save(struct Save* ptr)
-{
-    
-}
-
-int find_best_thread_less(struct Save *status, size_t start, size_t end) {
-    double best_score = 10000000.0;
-    int idx = -1;
-
-    for (size_t i = start; i < end; i++)
-    {
-        struct Score score_all = scores(status, i);
-
-        double score = score_all.E;
-        status->scores[i] = score;
-        //printf("%f\n", score);
-        if (score < best_score)
-        {
-            best_score = score;
-            idx = i;
-        }
-    }
-
-    return idx;
-}
-
 void *worker(void *arg)
 {
     struct workData *data = (struct workData *)arg;
 
     data->idx = find_best_thread_less(data->data, data->begin, data->end);
-    data->score = data->data->scores[data->idx];
+    data->score = data->data->best_score;
 }
 
 int find_best(struct Save *status, int nb_thread)
@@ -391,7 +408,7 @@ int find_best(struct Save *status, int nb_thread)
         a += repartition;
 
         datas[i].end = a;
-        datas[i].data = status;
+        datas[i].data = clone_save(status);
     }
 
     datas[nb_thread - 1].end = NB_WORD;
@@ -410,11 +427,13 @@ int find_best(struct Save *status, int nb_thread)
     {
         pthread_join(threads[i], NULL);
 
+        // printf("score thread %d: %f\n", i, datas[i].score);
         if (datas[i].score < best_score)
         {
             best_score = datas[i].score;
             idx = datas[i].idx;
         }
+        free_save(datas[i].data);
     }
 
     free(datas);

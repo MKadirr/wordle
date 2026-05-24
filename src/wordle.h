@@ -3,25 +3,21 @@
 
 #include <stddef.h>
 
-#define NB_WORD (size_t) 14855
+#define NB_WORD (size_t) (14855)
 #define NB_USED (size_t) 2315
 
 #define NB_COMBI (3 * 3 * 3 * 3 * 3)
+#define NB_TENTA 6
 
 #define WORD_SIZE 5
 
 struct Save
 {
-    int *available;
-    int *from_wordle;
-    int *word_data;
-    double *scores;
+    char *available;
+    char *from_wordle;
 
+    double best_score;
     int turn;
-
-    char know[WORD_SIZE];
-    int misplaced;
-    int not_in[WORD_SIZE];
 };
 
 struct Score {

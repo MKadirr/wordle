@@ -27,7 +27,7 @@ void print_valid(struct Save *data)
                 printf("[ ] ");
             }
 
-            printf("%s : scores %f\n", dataset[i], data->scores[i]);
+            printf("%s\n", dataset[i]);
         }
     }
 }
@@ -59,6 +59,22 @@ struct Counter count_remaining(struct Save *data)
 
 struct Param params;
 
+int bench(struct Save* data) {
+    time_t begin = time(NULL);
+
+    char buffer[WORD_SIZE + 1];
+    char result[WORD_SIZE + 1];
+    
+    init(data, buffer, result, params);
+    time_t step1 = time(NULL);
+    
+    find_best(data, params.nb_thread);
+    time_t step2 = time(NULL);
+
+    printf("%ld;%ld;%ld\n", begin, step1, step2);
+    printf("%ld;%ld\n", step1 - begin, step2 - begin);
+}
+
 int main(int argc, char **argv)
 {
     printf("Hello world: %zu words possible\n", NB_WORD);
@@ -67,17 +83,24 @@ int main(int argc, char **argv)
 
     params = parse_arg(argc, argv);
 
-    int available[NB_WORD];
-    int word_data[NB_WORD];
-    int from_wordle[NB_WORD];
-    double scores[NB_WORD];
+    char available[NB_WORD];
+    char from_wordle[NB_WORD];
 
-    struct Save data = { available, from_wordle, word_data, scores, 0 };
+    struct Save data = {
+        .available = available, 
+        .from_wordle = from_wordle, 
+        .best_score = 0, 
+        .turn = 0 };
 
     char buffer[WORD_SIZE + 1];
     char result[WORD_SIZE + 1];
 
     init(&data, buffer, result, params);
+
+    if (params.bench) {
+        bench(&data);
+        return 100;
+    }
 
     if (params.prev) {
         printf("Please enter other's sequences\n");
@@ -159,6 +182,7 @@ int main(int argc, char **argv)
         if (!params.disable && remaining.total > 5 && remaining.wordle > 2)
         {
             conseil = find_best(&data, params.nb_thread);
+            printf("conseil = %d/%ld\n", conseil, NB_WORD);
             printf("Select a word, %d remainings, %d from wordle (recommanded "
                    "= %s):\n",
                    remaining.total, remaining.wordle, dataset[conseil]);
