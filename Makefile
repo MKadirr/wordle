@@ -3,7 +3,7 @@ INCLUDE=include
 
 SRC=$(wildcard src/*.c)
 OBJ=${SRC:.c=.o}
-EXE=solver.out
+EXE=solver.exe
 
 # CFLAGS=-lm -g -O0 -fsanitize=address
 CFLAGS=-lm -O3
