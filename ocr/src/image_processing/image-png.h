@@ -1,15 +1,10 @@
 #ifndef OCR_IMAGE_PNG
 #define OCR_IMAGE_PNG
 
-struct rgba {
-    int r;
-    int g;
-    int b;
-    int a;
-};
+#include "rgb.h"
 
 struct png {
-    struct rgba ***matrix;
+    struct rgb ***matrix;
     int width;
     int height;
 };

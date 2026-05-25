@@ -123,18 +123,13 @@ struct png *load_png(const char *filename) {
 
     result->height = height;
     result->width = width;
-    result->matrix = calloc(height, sizeof(struct rgba *));
+    result->matrix = calloc(height, sizeof(struct rgb *));
     for (int y = 0; y < height; y++) {
-        result->matrix[y] = calloc(width, sizeof(struct rgba));
+        result->matrix[y] = calloc(width, sizeof(struct rgb));
 
         for (int x = 0; x < width; x++) {
             png_bytep px = &(rows[y][x]);
-            struct rgba *pixel = calloc(1, sizeof(struct rgba));
-            pixel->r = px[0];
-            pixel->g = px[1];
-            pixel->b = px[2];
-            pixel->a = px[3];
-            result->matrix[y][x] = pixel;
+            result->matrix[y][x] = make_rgb(px[0], px[1], px[2]);
         }
     }
 
