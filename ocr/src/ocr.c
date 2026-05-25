@@ -10,6 +10,7 @@
 #include "options/options.h"
 #include "logger/logger.h"
 #include "utils/utils.h"
+#include "image_processing/image-png.h"
 
 
 int get_current_images(struct options *opts) {
@@ -108,6 +109,11 @@ int ocr(int argc, char** argv) {
 
     if (opts->execute) {
         execute(opts);
+
+        // For test
+        struct png *image = load_png("images/Image-0.png");
+
+        free_png(image);
     }
 
     free_options(opts);

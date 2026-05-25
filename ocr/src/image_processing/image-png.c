@@ -121,6 +121,8 @@ struct png *load_png(const char *filename) {
 
     info("Loaded PNG: %dx%d", width, height);
 
+    result->height = height;
+    result->width = width;
     result->matrix = calloc(height, sizeof(struct rgba *));
     for (int y = 0; y < height; y++) {
         result->matrix[y] = calloc(width, sizeof(struct rgba));
