@@ -25,6 +25,6 @@ struct hsv *rgb_to_hsv(struct rgb *pixel);
 struct rgb *make_rgb(int r, int g, int b);
 void change_pixel_color(struct rgb *pixel, enum color col);
 enum color rgb_color(struct rgb *pixel);
-void rgb_to_color_rgb(struct rgb *pixel);
+enum color rgb_to_color_rgb(struct rgb *pixel);
 
 #endif /* !OCR_PIXEL_H */

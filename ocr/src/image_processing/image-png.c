@@ -145,7 +145,7 @@ struct png *load_png(const char *filename) {
         result->matrix[y] = calloc(width, sizeof(struct rgb));
 
         for (int x = 0; x < width; x++) {
-            png_bytep px = &(rows[y][x]);
+            png_bytep px = &(rows[y][x * 4]);
             result->matrix[y][x] = make_rgb(px[0], px[1], px[2]);
         }
     }
@@ -167,9 +167,6 @@ struct png *load_png(const char *filename) {
     fclose(fp);
 
     return result;
-}
-
-void save_png(struct png *image, const char *filename) {
 }
 
 void save_png(struct png *image, const char *filename) {
@@ -231,7 +228,7 @@ void save_png(struct png *image, const char *filename) {
         image->width,
         image->height,
         8,
-        PNG_COLOR_TYPE_RGB,
+        PNG_COLOR_TYPE_RGBA,
         PNG_INTERLACE_NONE,
         PNG_COMPRESSION_TYPE_DEFAULT,
         PNG_FILTER_TYPE_DEFAULT
@@ -239,24 +236,18 @@ void save_png(struct png *image, const char *filename) {
 
     png_write_info(png, info);
 
-    png_bytep *rows =
-        malloc(sizeof(png_bytep) * image->height);
+    png_bytep *rows = malloc(sizeof(png_bytep) * image->height);
 
-    for (int y = 0; y < image->height; y++)
-    {
-        rows[y] =
-            malloc(image->width * 3);
+    for (int y = 0; y < image->height; y++) {
+        rows[y] = malloc((size_t)image->width * 4);
 
-        for (int x = 0; x < image->width; x++)
-        {
-            rows[y][x * 3 + 0] =
-                image->matrix[y][x].r;
+        for (int x = 0; x < image->width; x++) {
+            png_bytep px = &rows[y][x * 4];
 
-            rows[y][x * 3 + 1] =
-                image->matrix[y][x].g;
-
-            rows[y][x * 3 + 2] =
-                image->matrix[y][x].b;
+            px[0] = image->matrix[y][x]->r;
+            px[1] = image->matrix[y][x]->g;
+            px[2] = image->matrix[y][x]->b;
+            px[3] = 255;
         }
     }
 
@@ -264,7 +255,7 @@ void save_png(struct png *image, const char *filename) {
 
     png_write_end(png, NULL);
 
-    for (int y = 0; y < height; y++)
+    for (int y = 0; y < image->height; y++)
     {
         free(rows[y]);
     }

@@ -2,11 +2,6 @@
 #include <stdlib.h>
 #include "logger/logger.h"
 
-float fmodf(float x, float y) {
-    int quotient = (int)(x / y);
-    return x - quotient * y;
-}
-
 struct rgb *make_rgb(int r, int g, int b) {
     struct rgb *pixel = calloc(1, sizeof(struct rgb));
 
@@ -38,9 +33,9 @@ struct hsv *make_hsv(float h, float s, float v) {
 struct hsv *rgb_to_hsv(struct rgb *pixel) {
     struct hsv *out = make_hsv(0, 0, 0);
 
-    float r = pixel->r / 255.0f;
-    float g = pixel->g / 255.0f;
-    float b = pixel->b / 255.0f;
+    float r = (float)pixel->r / 255.0f;
+    float g = (float)pixel->g / 255.0f;
+    float b = (float)pixel->b / 255.0f;
 
     float min = r < g ? (r < b ? r : b) : (g < b ? g : b);
     float max = r > g ? (r > b ? r : b) : (g > b ? g : b);
@@ -49,16 +44,16 @@ struct hsv *rgb_to_hsv(struct rgb *pixel) {
 
     out->v = max;
     
-    if (max == 0.0f) {
+    if (max < 1e-6f) {
         out->s = 0.0f;
     } else {
         out->s = delta / max;
     }
 
-    if (delta == 0.0f) {
+    if (delta < 1e-6f) {
         out->h = 0.0f;
     } else if (max == r) {
-        out->h = 60.0f * fmodf((g - b) / delta, 6.0f);
+        out->h = 60.0f * ((g - b) / delta);
     } else if (max == g) {
         out->h = 60.0f * (((b - r) / delta) + 2.0f);
     } else {
@@ -126,24 +121,34 @@ enum color rgb_color(struct rgb *pixel) {
     return COLOR_BLACK;
 }
 
-void rgb_to_color_rgb(struct rgb *pixel) {
+enum color rgb_to_color_rgb(struct rgb *pixel) {
     struct hsv *phsv = rgb_to_hsv(pixel);
+
+    enum color result;
 
     if (phsv->s < 0.15f) {
         if (phsv->v < 0.2f) {
             change_pixel_color(pixel, COLOR_BLACK);
-        } else change_pixel_color(pixel, COLOR_GRAY);
+            result = COLOR_BLACK;
+        } else {
+            change_pixel_color(pixel, COLOR_GRAY);
+            result = COLOR_GRAY;
+        }
         free(phsv);
-        return;
+        return result;
     }
 
-    if (30 <= phsv->h < 90) {
+    if (30.0f <= phsv->h && phsv->h < 90.0f) {
         change_pixel_color(pixel, COLOR_YELLOW);
-    } else if (90 <= phsv->h < 150) {
+        result = COLOR_YELLOW;
+    } else if (90.0f <= phsv->h && phsv->h < 150.0f) {
         change_pixel_color(pixel, COLOR_GREEN);
+        result = COLOR_GREEN;
     } else {
         change_pixel_color(pixel, COLOR_BLACK);
+        result = COLOR_BLACK;
     }
     
     free(phsv);
+    return result;
 }

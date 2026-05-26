@@ -2,7 +2,10 @@
 #define OCR_PROCESS_IMAGE_H
 
 #include "image-png.h"
+#include "corpus/square.h"
 
 void image_to_colored_image(struct png *image);
+struct square_list *find_squares(struct png *image);
+void fill_image(struct png *image, int startX, int startY, int size, enum color color);
 
 #endif /* !OCR_PROCESS_IMAGE_H */
