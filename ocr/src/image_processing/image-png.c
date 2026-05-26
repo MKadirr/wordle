@@ -170,8 +170,113 @@ struct png *load_png(const char *filename) {
 }
 
 void save_png(struct png *image, const char *filename) {
+}
+
+void save_png(struct png *image, const char *filename) {
     info("Save image at %s", filename);
     debug("Save image of size %dx%d", image->width, image->height);
+    FILE *fp = fopen(filename, "wb");
+
+    if (!fp)
+    {
+        error("Fail to open %s", filename);
+        return;
+    }
+
+    png_structp png =
+        png_create_write_struct(
+            PNG_LIBPNG_VER_STRING,
+            NULL,
+            NULL,
+            NULL
+        );
+
+    if (!png)
+    {
+        error("Error while creating png");
+        fclose(fp);
+        return;
+    }
+
+    png_infop info =
+        png_create_info_struct(png);
+
+    if (!info)
+    {
+        error("Error while creating png");
+        png_destroy_write_struct(&png, NULL);
+        fclose(fp);
+        return;
+    }
+
+    if (setjmp(png_jmpbuf(png)))
+    {
+        error("Error during PNG creation\n");
+
+        png_destroy_write_struct(
+            &png,
+            &info
+        );
+
+        fclose(fp);
+
+        return;
+    }
+
+    png_init_io(png, fp);
+
+    png_set_IHDR(
+        png,
+        info,
+        image->width,
+        image->height,
+        8,
+        PNG_COLOR_TYPE_RGB,
+        PNG_INTERLACE_NONE,
+        PNG_COMPRESSION_TYPE_DEFAULT,
+        PNG_FILTER_TYPE_DEFAULT
+    );
+
+    png_write_info(png, info);
+
+    png_bytep *rows =
+        malloc(sizeof(png_bytep) * image->height);
+
+    for (int y = 0; y < image->height; y++)
+    {
+        rows[y] =
+            malloc(image->width * 3);
+
+        for (int x = 0; x < image->width; x++)
+        {
+            rows[y][x * 3 + 0] =
+                image->matrix[y][x].r;
+
+            rows[y][x * 3 + 1] =
+                image->matrix[y][x].g;
+
+            rows[y][x * 3 + 2] =
+                image->matrix[y][x].b;
+        }
+    }
+
+    png_write_image(png, rows);
+
+    png_write_end(png, NULL);
+
+    for (int y = 0; y < height; y++)
+    {
+        free(rows[y]);
+    }
+
+    free(rows);
+
+    png_destroy_write_struct(
+        &png,
+        &info
+    );
+
+    fclose(fp);
 }
 
 void free_png(struct png *image) {
