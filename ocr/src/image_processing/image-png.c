@@ -19,6 +19,7 @@ struct png *load_png(const char *filename) {
     if (!fp)
     {
         error("Failed to open file %s", filename);
+        free(result);
         return NULL;
     }
 
@@ -32,6 +33,8 @@ struct png *load_png(const char *filename) {
 
     if (!png) {
         error("Error while creating png (%s)", filename);
+        free(result);
+        fclose(fp);
         return NULL;
     }
 
@@ -40,12 +43,26 @@ struct png *load_png(const char *filename) {
 
     if (!png_info) {
         error("Error while creating png (%s)", filename);
+        free(result);
+        fclose(fp);
+        png_destroy_read_struct(
+            &png,
+            NULL,
+            NULL
+        );
         return NULL;
     }
 
     if (setjmp(png_jmpbuf(png)))
     {
         error("Error during PNG read (%s)", filename);
+        free(result);
+        fclose(fp);
+        png_destroy_read_struct(
+            &png,
+            &png_info,
+            NULL
+        );
         return NULL;
     }
 
@@ -119,7 +136,7 @@ struct png *load_png(const char *filename) {
 
     png_read_image(png, rows);
 
-    info("Loaded PNG: %dx%d", width, height);
+    info("Loaded PNG of size %dx%d: %s", width, height, filename);
 
     result->height = height;
     result->width = width;
@@ -150,6 +167,11 @@ struct png *load_png(const char *filename) {
     fclose(fp);
 
     return result;
+}
+
+void save_png(struct png *image, const char *filename) {
+    info("Save image at %s", filename);
+    debug("Save image of size %dx%d", image->width, image->height);
 }
 
 void free_png(struct png *image) {

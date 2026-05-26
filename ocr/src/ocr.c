@@ -11,17 +11,11 @@
 #include "logger/logger.h"
 #include "utils/utils.h"
 #include "image_processing/image-png.h"
+#include "image_processing/process-image.h"
 
 
-int get_current_images(struct options *opts) {
+int get_current_images(struct options *opts, const char *filenameFormat, int filenameFormatLen) {
     info("Skip curl, simply count already present images with %s pattern.", opts->nameFormat);
-
-    int formatLen = strlen(opts->nameFormat) - 2;
-    int dirLen = strlen(opts->imgDir);
-
-    char *filenameFormat = calloc(dirLen + formatLen + 4, sizeof(char));
-    sprintf(filenameFormat, "%s/%s", opts->imgDir, opts->nameFormat);
-    debug("Filename format: %s", filenameFormat);
 
     int nbImages = -1;
     bool exists = true;
@@ -29,7 +23,7 @@ int get_current_images(struct options *opts) {
     while (exists) {
         nbImages++;
 
-        char *filename = calloc(dirLen + formatLen + numPlaces(nbImages) + 2, sizeof(char));
+        char *filename = calloc(filenameFormatLen + numPlaces(nbImages) + 2, sizeof(char));
         sprintf(filename, filenameFormat, nbImages);
         debug("Search for %s", filename);
 
@@ -38,8 +32,8 @@ int get_current_images(struct options *opts) {
         free(filename);
     }
 
-    free(filenameFormat);
     info("%d images found.", nbImages);
+    return nbImages;
 }
 
 int call_curl(struct options *opts) {
@@ -84,13 +78,54 @@ void execute(struct options *opts) {
     int nbImages;
     if (!opts->noCurl) {
         nbImages = call_curl(opts);
-    } else {
-        nbImages = get_current_images(opts);
     }
 
+    int formatLen = strlen(opts->nameFormat) - 2;
+    int dirLen = strlen(opts->imgDir);
+
+    char *filenameFormat = calloc(dirLen + formatLen + 4, sizeof(char));
+    sprintf(filenameFormat, "%s/%s", opts->imgDir, opts->nameFormat);
+    debug("Filename format: %s", filenameFormat);
+
+    if (opts->noCurl) {
+        nbImages = get_current_images(opts, filenameFormat, dirLen + formatLen);
+    }
+
+    debug("Image of number: %d", nbImages);
+
     if (nbImages <= 0) {
+        free(filenameFormat);
         return;
     }
+
+    for (int i = 0; i < nbImages; i++) {
+        char *filename = calloc(dirLen + formatLen + numPlaces(i) + 2, sizeof(char));
+        sprintf(filename, filenameFormat, i);
+
+        struct png *image = load_png(filename);
+
+        if (!image) {
+            free(filename);
+            continue;
+        }
+
+        image_to_colored_image(image);
+
+        if (opts->withItermediate) {
+            char *coloredFilename = calloc(dirLen + numPlaces(i) + 14, sizeof(char));
+            sprintf(coloredFilename, "%s/colored-%d.png", opts->imgDir, i);
+
+            save_png(image, coloredFilename);
+            free(coloredFilename);
+        }
+
+        // Do work
+
+        free_png(image);
+        free(filename);
+    }
+
+    free(filenameFormat);
 }
 
 int ocr(int argc, char** argv) {
@@ -109,11 +144,6 @@ int ocr(int argc, char** argv) {
 
     if (opts->execute) {
         execute(opts);
-
-        // For test
-        struct png *image = load_png("images/Image-0.png");
-
-        free_png(image);
     }
 
     free_options(opts);

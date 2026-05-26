@@ -1,7 +1,7 @@
-#ifndef OCR_IMAGE_PNG
-#define OCR_IMAGE_PNG
+#ifndef OCR_IMAGE_PNG_H
+#define OCR_IMAGE_PNG_H
 
-#include "rgb.h"
+#include "pixel.h"
 
 struct png {
     struct rgb ***matrix;
@@ -10,6 +10,7 @@ struct png {
 };
 
 struct png *load_png(const char *filename);
+void save_png(struct png *image, const char *filename);
 void free_png(struct png *image);
 
-#endif /* !OCR_IMAGE_PNG */
+#endif /* !OCR_IMAGE_PNG_H */
