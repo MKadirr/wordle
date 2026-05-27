@@ -12,6 +12,7 @@
 #include "utils/utils.h"
 #include "image_processing/image-png.h"
 #include "image_processing/process-image.h"
+#include "corpus/square.h"
 
 
 int get_current_images(struct options *opts, const char *filenameFormat, int filenameFormatLen) {
@@ -119,8 +120,33 @@ void execute(struct options *opts) {
             free(coloredFilename);
         }
 
+        struct square_list *sl = find_squares(image);
+        
+        if (opts->withItermediate) {
+            image_from_squares(image, sl);
+
+            char *squaredFilename = calloc(dirLen + numPlaces(i) + 18, sizeof(char));
+            sprintf(squaredFilename, "%s/raw-squares-%d.png", opts->imgDir, i);
+
+            save_png(image, squaredFilename);
+            free(squaredFilename);
+        }
+
+        filter_squares(sl, 4, 25);
+
+        if (opts->withItermediate) {
+            image_from_squares(image, sl);
+
+            char *filteredSquaredFilename = calloc(dirLen + numPlaces(i) + 23, sizeof(char));
+            sprintf(filteredSquaredFilename, "%s/filtered-squares-%d.png", opts->imgDir, i);
+
+            save_png(image, filteredSquaredFilename);
+            free(filteredSquaredFilename);
+        }
+
         // Do work
 
+        free_square_list(sl);
         free_png(image);
         free(filename);
     }
