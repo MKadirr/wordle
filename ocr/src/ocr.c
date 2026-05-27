@@ -13,6 +13,7 @@
 #include "image_processing/image-png.h"
 #include "image_processing/process-image.h"
 #include "corpus/square.h"
+#include "corpus/corpus.h"
 
 
 int get_current_images(struct options *opts, const char *filenameFormat, int filenameFormatLen) {
@@ -100,7 +101,8 @@ void execute(struct options *opts) {
     }
 
     for (int i = 0; i < nbImages; i++) {
-        char *filename = calloc(dirLen + formatLen + numPlaces(i) + 2, sizeof(char));
+        int ni = numPlaces(i);
+        char *filename = calloc(dirLen + formatLen + ni + 2, sizeof(char));
         sprintf(filename, filenameFormat, i);
 
         struct png *image = load_png(filename);
@@ -113,7 +115,7 @@ void execute(struct options *opts) {
         image_to_colored_image(image);
 
         if (opts->withItermediate) {
-            char *coloredFilename = calloc(dirLen + numPlaces(i) + 14, sizeof(char));
+            char *coloredFilename = calloc(dirLen + ni + 14, sizeof(char));
             sprintf(coloredFilename, "%s/colored-%d.png", opts->imgDir, i);
 
             save_png(image, coloredFilename);
@@ -125,26 +127,47 @@ void execute(struct options *opts) {
         if (opts->withItermediate) {
             image_from_squares(image, sl);
 
-            char *squaredFilename = calloc(dirLen + numPlaces(i) + 18, sizeof(char));
+            char *squaredFilename = calloc(dirLen + ni + 18, sizeof(char));
             sprintf(squaredFilename, "%s/raw-squares-%d.png", opts->imgDir, i);
 
             save_png(image, squaredFilename);
             free(squaredFilename);
         }
 
-        filter_squares(sl, 4, 25);
+        int maxCorpus = filter_squares(sl, 4, 25);
+
+        info("The max number of corpus is: %d", maxCorpus);
 
         if (opts->withItermediate) {
             image_from_squares(image, sl);
 
-            char *filteredSquaredFilename = calloc(dirLen + numPlaces(i) + 23, sizeof(char));
+            char *filteredSquaredFilename = calloc(dirLen + ni + 23, sizeof(char));
             sprintf(filteredSquaredFilename, "%s/filtered-squares-%d.png", opts->imgDir, i);
 
             save_png(image, filteredSquaredFilename);
             free(filteredSquaredFilename);
         }
 
-        // Do work
+        struct square_corpus **corpus = find_square_corpus(sl, maxCorpus);
+        
+        populate_square_list_from_corpus(sl, corpus);
+        image_from_squares(image, sl);
+
+        int outputFilenameFormatLen = dirLen + strlen(opts->outputFormat) + 1;
+        char *outputFilenameFormat = calloc(outputFilenameFormatLen + 1, sizeof(char));
+        sprintf(outputFilenameFormat, "%s/%s", opts->imgDir, opts->outputFormat);
+
+        char *outputFilename = calloc(outputFilenameFormatLen + ni - 1, sizeof(char));
+        sprintf(outputFilename, outputFilenameFormat, i);
+
+        save_png(image, outputFilename);
+        free(outputFilenameFormat);
+        free(outputFilename);
+
+        for (int i = 0; corpus[i]; i++) {
+            free(corpus[i]);
+        }
+        free(corpus);
 
         free_square_list(sl);
         free_png(image);

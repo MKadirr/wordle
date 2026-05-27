@@ -103,7 +103,7 @@ struct square_list *find_squares(struct png *image) {
         }
     }
 
-    info("Squares found: %d", square_list_len(sl));
+    info("Squares found: %d", sl->size);
     return sl;
 }
 
@@ -121,11 +121,11 @@ void image_from_squares(struct png *image, struct square_list *sl) {
     }
 }
 
-void filter_squares(struct square_list *sl, int minSize, int maxSize) {
+int filter_squares(struct square_list *sl, int minSize, int maxSize) {
     struct square_list_element *sle = sl->head;
     struct counter *c = make_counter(minSize, maxSize);
     if (!c) {
-        return;
+        return -1;
     }
 
     while (sle) {
@@ -148,5 +148,14 @@ void filter_squares(struct square_list *sl, int minSize, int maxSize) {
         sle = next;
     }
 
+    int sup30Count = 0;
+    for (int size = minSize; size <= maxSize; size++) {
+        int count = count_of(c, size);
+        if (count >= 30) {
+            sup30Count += count;
+        }
+    }
+
     free_counter(c);
+    return (int)(sup30Count / 30);
 }

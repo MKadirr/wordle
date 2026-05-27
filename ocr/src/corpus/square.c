@@ -26,6 +26,9 @@ struct square_list *make_square_list(void) {
         exit(1);
     }
 
+    s->head = NULL;
+    s->size = 0;
+
     return s;
 }
 
@@ -71,6 +74,7 @@ void add_square(struct square_list *s, struct square *square) {
 
     if (!s->head) {
         s->head = elm;
+        s->size++;
         return;
     }
 
@@ -82,6 +86,7 @@ void add_square(struct square_list *s, struct square *square) {
         )) {
         s->head = elm;
         elm->next = l;
+        s->size++;
         return;
     }
 
@@ -97,6 +102,7 @@ void add_square(struct square_list *s, struct square *square) {
 
     elm->next = l->next;
     l->next = elm;
+    s->size++;
 }
 
 struct square *remove_square(struct square_list *s, int startX, int startY) {
@@ -109,9 +115,10 @@ struct square *remove_square(struct square_list *s, int startX, int startY) {
 
     if (l->data->startX == startX && l->data->startY == startY) {
         s->head = l->next;
-        struct square *s = l->data;
+        struct square *square = l->data;
         free(l);
-        return s;
+        s->size--;
+        return square;
     }
 
     while(l->next && (l->next->data->startX != startX || l->next->data->startY != startY)) {
@@ -127,16 +134,6 @@ struct square *remove_square(struct square_list *s, int startX, int startY) {
     struct square_list_element *se = l->next;
     l->next = l->next->next;
     free(se);
+    s->size--;
     return square;
-}
-
-int square_list_len(struct square_list *sl) {
-    int i = 0;
-    struct square_list_element *sle = sl->head;
-    while(sle) {
-        i++;
-        sle = sle->next;
-    }
-
-    return i;
 }
