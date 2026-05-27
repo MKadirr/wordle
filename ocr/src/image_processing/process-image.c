@@ -131,7 +131,7 @@ void filter_squares(struct square_list *sl, int minSize, int maxSize) {
     while (sle) {
         struct square_list_element *next = sle->next;
         if (sle->data->size < minSize || sle->data->size > maxSize) {
-            debug("Remove Square [%d, %d] of size: %d", sle->data->startX, sle->data->startY, sle->data->size);
+            // debug("Remove Square [%d, %d] of size: %d", sle->data->startX, sle->data->startY, sle->data->size);
             free(remove_square(sl, sle->data->startX, sle->data->startY));
         } else {
             add_to_counter(c, sle->data->size);
