@@ -18,6 +18,7 @@ Options:\n\
     -i | --with-intermediate                  Also save itermediate preproccessed images\n\n\
     --local                                   If you want to execute the program in the ocr folder, otherwise must be executed in the parent folder.\n\
     --no-curl                                 Don't curl the images, instead use the already present images.\n\
+    --no-output                               Don't create the output images.\n\
 ";
 
 bool is_valid_file_format(const char *fileFormat) {
@@ -63,6 +64,7 @@ struct options *make_options(void) {
     opts->withItermediate = false;
     opts->localExec = false;
     opts->noCurl = false;
+    opts->saveOutput = true;
 
     return opts;
 }
@@ -187,6 +189,10 @@ struct options *parse_options(int argc, char** argv) {
 
         else if (!strcmp(argv[i], "--no-curl")) {
             opts->noCurl = true;
+        }
+
+        else if (!strcmp(argv[i], "--no-output")) {
+            opts->saveOutput = false;
         }
 
         else {

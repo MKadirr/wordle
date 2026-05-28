@@ -10,7 +10,7 @@ struct square_corpus {
 };
 
 struct square_corpus *make_square_corpus(struct square *first);
-struct square_corpus **find_square_corpus(struct square_list *sl, int maxCorpus);
+struct square_corpus **find_square_corpus(struct square_list *sl, int *maxCorpus);
 void populate_square_list_from_corpus(struct square_list *sl, struct square_corpus **curpus);
 void free_square_corpus(struct square_corpus *sc);
 

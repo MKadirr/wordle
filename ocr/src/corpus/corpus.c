@@ -82,9 +82,9 @@ void populate_square_list_from_corpus(struct square_list *sl, struct square_corp
     }
 }
 
-struct square_corpus **find_square_corpus(struct square_list *sl, int maxCorpus) {
-    struct square_corpus **corpus_list = calloc(maxCorpus + 1, sizeof(struct square_corpus *));
-    debug("Max corpus: %d", maxCorpus);
+struct square_corpus **find_square_corpus(struct square_list *sl, int *maxCorpus) {
+    struct square_corpus **corpus_list = calloc(*maxCorpus + 1, sizeof(struct square_corpus *));
+    debug("Max corpus: %d", *maxCorpus);
     int n = 0;
 
     if (!corpus_list) {
@@ -113,6 +113,7 @@ struct square_corpus **find_square_corpus(struct square_list *sl, int maxCorpus)
     }
 
     info("%d corpus found", n);
+    *maxCorpus = n;
 
     return corpus_list;
 }

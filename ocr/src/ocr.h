@@ -1,6 +1,7 @@
 #ifndef OCR_H
 #define OCR_H
 
-int ocr(int argc, char **argv);
+char ***worlde_grid_from_image(char *filename);
+char ***ocr(int argc, char **argv);
 
 #endif /* !OCR_H */

@@ -17,6 +17,7 @@ struct options {
     bool withItermediate;
     bool localExec;
     bool noCurl;
+    bool saveOutput;
 };
 
 struct options *make_options(void);
