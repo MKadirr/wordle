@@ -20,6 +20,30 @@ Options:\n\
     --no-curl                                 Don't curl the images, instead use the already present images.\n\
 ";
 
+bool is_valid_file_format(const char *fileFormat) {
+    int len = strlen(fileFormat);
+
+    if (
+        len < 4 ||
+        fileFormat[len - 1] != 'g' ||
+        fileFormat[len - 2] != 'n' ||
+        fileFormat[len - 3] != 'p' ||
+        fileFormat[len - 4] != '.'
+    ) {
+        error("File format must end with .png");
+        return false;
+    }
+
+    for (int i = 0; i < len - 4; i++) {
+        if (fileFormat[i] == '%' && fileFormat[i + 1] == 'd') {
+            return true;
+        }
+    }
+
+    error("File format must contain %%d");
+    return false;
+}
+
 struct options *make_options(void) {
     struct options *opts = malloc(sizeof(struct options));
 
@@ -102,12 +126,22 @@ struct options *parse_options(int argc, char** argv) {
                 return opts;
             }
 
+            if (!is_valid_file_format(argv[i])) {
+                opts->misformed = true;
+                return opts;
+            }
+
             opts->nameFormat = argv[i];
         }
 
         else if (!strcmp(argv[i], "-o") || !strcmp(argv[i], "--output-format")) {
             if (++i >= argc) {
                 error("No output format name specify after %s", argv[i - 1]);
+                opts->misformed = true;
+                return opts;
+            }
+
+            if (!is_valid_file_format(argv[i])) {
                 opts->misformed = true;
                 return opts;
             }
