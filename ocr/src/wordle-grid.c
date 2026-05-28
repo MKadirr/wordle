@@ -1,6 +1,7 @@
 #include "wordle-grid.h"
 #include <stdlib.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include "logger/logger.h"
 
 char **make_grid() {
@@ -29,6 +30,10 @@ char **make_grid() {
 }
 
 void free_wordle_grids(char ***grids) {
+    if (!grids) {
+        return;
+    }
+
     for (int i = 0; grids[i]; i++) {
         for (int j = 0; grids[i][j]; j++) {
             free(grids[i][j]);
@@ -44,13 +49,22 @@ char ***grids_from_corpus(struct square_corpus **sc, int nbCorpus) {
     for (int i; sc[i]; i++) {
         grids[i] = make_grid();
         
+        bool lastLine = false;
         for (int y = 0; y < 6; y++) {
             int g = 0;
-            bool lastLine = false;
+
+            if (lastLine) {
+                free(grids[i][y]);
+                grids[i][y] = NULL;
+                continue;
+            }
+
             for (int x = 0; x < 5; x++) {
                 struct square *s = sc[i]->corpus[y * 5 + x];
-                if (s->color == COLOR_BLACK || s->color == COLOR_BLACK) {
+                if (s->color == COLOR_BLACK || s->color == COLOR_WHITE) {
                     lastLine = true;
+                    free(grids[i][y]);
+                    grids[i][y] = NULL;
                     break;
                 }
                 
@@ -61,10 +75,6 @@ char ***grids_from_corpus(struct square_corpus **sc, int nbCorpus) {
                 } else {
                     grids[i][y][x] = 'y';
                 }
-            }
-
-            if (lastLine) {
-                break;
             }
         }
     }
@@ -99,4 +109,31 @@ char ***merge_grids(char ***g1, char ***g2) {
     free(g1);
     free(g2);
     return ng;
+}
+
+void print_grids(char ***grids) {
+    if (!grids) {
+        return;
+    }
+
+    for (int i = 0; grids[i]; i++) {
+        printf("---- Grid %d ----\n\n", i);
+        for (int y = 0; grids[i][y]; y++) {
+            printf("%d | %c - %c - %c - %c - %c\n", y, grids[i][y][0], grids[i][y][1], grids[i][y][2], grids[i][y][3], grids[i][y][4]);
+        }
+        printf("\n");
+    }
+}
+
+
+void print_grid(char **grid) {
+    if (!grid) {
+        return;
+    }
+
+    printf("---- Grid ----\n\n");
+    for (int y = 0; grid[y]; y++) {
+        printf("%d | %c - %c - %c - %c - %c\n", y, grid[y][0], grid[y][1], grid[y][2], grid[y][3], grid[y][4]);
+    }
+    printf("\n-------------\n");
 }

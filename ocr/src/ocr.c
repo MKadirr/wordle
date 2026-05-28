@@ -75,14 +75,14 @@ int call_curl(struct options *opts) {
 }
 
 char ***_worlde_grid_from_image(char *filename, struct options *opts, int i) {
-    int dirLen = strlen(opts->imgDir);
-    int ni = numPlaces(i);
-
     bool freeOptions = false;
     if (!opts) {
         freeOptions = true;
         opts = make_options();
     }
+
+    int dirLen = strlen(opts->imgDir);
+    int ni = numPlaces(i);
 
     struct png *image = load_png(filename);
 
