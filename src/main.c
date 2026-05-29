@@ -2,6 +2,7 @@
 #include <time.h>
 #include <stddef.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "wordle.h"
 
@@ -89,7 +90,6 @@ int main(int argc, char **argv)
     struct Save data = {
         .available = available, 
         .from_wordle = from_wordle, 
-        .best_score = 0, 
         .turn = 0 };
 
     char buffer[WORD_SIZE + 1];
@@ -103,8 +103,6 @@ int main(int argc, char **argv)
     }
 
     if (params.prev) {
-        printf("Please enter other's sequences\n");
-        printf("Press enter 2 times to change sequence and 3 times to stop\n");
 
         unsigned char combi[NB_COMBI];
 
@@ -113,6 +111,45 @@ int main(int argc, char **argv)
         char c = '\0';
 
         int count = 0;
+
+        printf("Loadings imgs...\n");
+
+        for (size_t n = 0; n < params.imgs->size; n++)
+        {
+            printf("Processing: %s\n", params.imgs->data[n]);
+
+            char ***datas = calloc(1, sizeof(char*)); // TODO
+
+            for (size_t k = 0; datas[k]; k++) {
+                for (size_t i = 0; i < NB_COMBI; i++) {
+                    combi[i] = 0;
+                }
+
+                for (size_t i = 0; datas[k][i]; i++) {
+                    write(1, datas[k][i], 5);
+                    printf("\n");
+                    combi[result_to_char(datas[k][i])]++;
+                }
+
+                int count2 = 0;
+                for (size_t i = 0; i < NB_WORD; i++) {
+                    for (size_t j = 0; j < NB_COMBI; j++) {
+                        if (data.available[i] && combis[i][j] < combi[j]) {
+                            // printf("removing word: %s\n" , dataset[i]);
+                            data.available[i] = 0;
+                            count2++;
+                        }
+                    }
+                }
+
+                printf("removed %d word(s)\n", count2);
+            }
+        }
+        printf("Done\n\n");
+
+        printf("Please enter other's sequences\n");
+        printf("Press enter 2 times to change sequence and 3 times to stop\n");
+
         while (1) {
             count = 0;
             for (size_t i = 0; i < NB_COMBI; i++) {
@@ -184,16 +221,16 @@ int main(int argc, char **argv)
             conseil = find_best(&data, params.nb_thread);
             printf("conseil = %d/%ld\n", conseil, NB_WORD);
             printf("Select a word, %d remainings, %d from wordle (recommanded "
-                   "= %s):\n",
-                   remaining.total, remaining.wordle, dataset[conseil]);
+                    "= %s):\n",
+                    remaining.total, remaining.wordle, dataset[conseil]);
         }
         else if (!params.disable && remaining.total > 2)
         {
             conseil = find_best(&data, params.nb_thread);
             print_valid(&data);
             printf("Select a word, %d remainings, %d from wordle (recommanded "
-                   "= %s):\n",
-                   remaining.total, remaining.wordle, dataset[conseil]);
+                    "= %s):\n",
+                    remaining.total, remaining.wordle, dataset[conseil]);
         }
         else
         {
@@ -226,7 +263,7 @@ int main(int argc, char **argv)
         else
         {
             printf(
-                "Result obtain(n = not in word, m = misplaced, y = good):\n");
+                    "Result obtain(n = not in word, m = misplaced, y = good):\n");
             for (int i = 0; i < WORD_SIZE; i++)
             {
                 result[i] = getchar();

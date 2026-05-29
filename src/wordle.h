@@ -3,6 +3,8 @@
 
 #include <stddef.h>
 
+#include "vector.h"
+
 #define NB_WORD (size_t) (14855)
 #define NB_USED (size_t) 2315
 
@@ -11,12 +13,16 @@
 
 #define WORD_SIZE 5
 
+#define N_BESTS 10
+
 struct Save
 {
     char *available;
     char *from_wordle;
 
-    double best_score;
+    double bests[N_BESTS];
+    int bests_idx[N_BESTS];
+
     int turn;
 };
 
@@ -62,6 +68,7 @@ struct Param
     
     int bench;
     int hard;
+    struct Vector* imgs;
 };
 
 int compact(char a);

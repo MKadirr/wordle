@@ -20,12 +20,16 @@ void print_help() {
     printf("    --help        display that programme\n");
     printf("    --limited     run the programme with only wordle used word: some of in your wordle game may not be in that list\n");
     printf("    -p            enable the filtering using other grid to reduce possibilities\n");
-    printf("    -r            choose a random word for that game");
+    printf("    -r            choose a random word for that game\n");
+    printf("    -I PATH       path to discord's wordle's board images\n");
+
 }
 
 struct Param parse_arg(int argc, char **argv)
 {
     struct Param ret = { 0 };
+
+    ret.imgs = ctr_vector();
 
     ret.nb_thread = 1;
 
@@ -34,6 +38,21 @@ struct Param parse_arg(int argc, char **argv)
         if (!strcmp(argv[i], "-a"))
         {
             ret.automat = 1;
+        }
+        else if (!strcmp(argv[i], "-I")) {
+
+            if (i + 1 < argc)
+            {
+                i++;
+
+                push_vector(ret.imgs, argv[i]);
+            }
+            else
+            {
+                fprintf(stderr, "-I used but no path given");
+                exit(1);
+            }
+
         }
         else if (!strcmp(argv[i], "-w"))
         {
