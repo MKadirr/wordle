@@ -6,6 +6,8 @@
 
 #include "wordle.h"
 
+#include "../ocr/src/ocr.h"
+
 #define NB_TENTA 6
 
 extern const char *dataset[];
@@ -116,9 +118,9 @@ int main(int argc, char **argv)
 
         for (size_t n = 0; n < params.imgs->size; n++)
         {
-            printf("Processing: %s\n", params.imgs->data[n]);
+            printf("Processing: %s\n", (char*)params.imgs->data[n]);
 
-            char ***datas = calloc(1, sizeof(char*)); // TODO
+            char ***datas = worlde_grid_from_image(params.imgs->data[n]);
 
             for (size_t k = 0; datas[k]; k++) {
                 for (size_t i = 0; i < NB_COMBI; i++) {
@@ -129,6 +131,7 @@ int main(int argc, char **argv)
                     write(1, datas[k][i], 5);
                     printf("\n");
                     combi[result_to_char(datas[k][i])]++;
+                    free(datas[k][i]);
                 }
 
                 int count2 = 0;
@@ -141,9 +144,12 @@ int main(int argc, char **argv)
                         }
                     }
                 }
+                free(datas[k]);
 
                 printf("removed %d word(s)\n", count2);
             }
+
+            free(datas);
         }
         printf("Done\n\n");
 

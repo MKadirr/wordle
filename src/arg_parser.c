@@ -4,7 +4,7 @@
 
 #include "wordle.h"
 
-void print_help() {
+void print_help_usage() {
     printf("usage: ./solver [OPTIONS]\n");
 
     
@@ -106,7 +106,7 @@ struct Param parse_arg(int argc, char **argv)
         } 
         else if (!strcmp(argv[i], "--help"))
         {
-            print_help();
+            print_help_usage();
             exit(0);
         }
         else if (!strcmp(argv[i], "-p"))
