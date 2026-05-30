@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <sys/time.h>
 #include <time.h>
 #include <stddef.h>
 #include <stdlib.h>
@@ -64,24 +65,30 @@ struct Counter count_remaining(struct Save *data)
 struct Param params;
 
 int bench(struct Save* data) {
-    time_t begin = time(NULL);
+    struct timeval start, step1, step2;
+    
+    int test = gettimeofday(&start, NULL);
 
     char buffer[WORD_SIZE + 1];
     char result[WORD_SIZE + 1];
     
     init(data, buffer, result, params);
-    time_t step1 = time(NULL);
+    test = gettimeofday(&step1, NULL);
     
-    find_best(data, params.nb_thread);
-    time_t step2 = time(NULL);
+    int tmp = find_best(data, params.nb_thread);
+    printf("conseil: %s\n", dataset[tmp]);
+    test = gettimeofday(&step2, NULL);
 
-    printf("%ld;%ld;%ld\n", begin, step1, step2);
-    printf("%ld;%ld\n", step1 - begin, step2 - begin);
+    long start_t = start.tv_sec * 1000000 + start.tv_usec;
+    long step1_t = step1.tv_sec * 1000000 + step1.tv_usec;
+    long step2_t = step2.tv_sec * 1000000 + step2.tv_usec;
+
+    // printf("%ld;%ld;%ld\n", start_t, step1_t, step2_t);
+    printf("%ld;%ld\n", step1_t - start_t, step2_t - start_t);
 }
 
 int main(int argc, char **argv)
 {
-    printf("Hello world: %zu words possible\n", NB_WORD);
 
     const char *prev[NB_TENTA][WORD_SIZE];
 
@@ -98,14 +105,16 @@ int main(int argc, char **argv)
     char buffer[WORD_SIZE + 1];
     char result[WORD_SIZE + 1];
 
-    init(&data, buffer, result, params);
-
     if (params.bench) {
         bench(&data);
         return 100;
     }
 
+    printf("Hello world: %zu words possible\n", NB_WORD);
+    init(&data, buffer, result, params);
+    
     if (params.ocrArgc) {
+
         unsigned char combi[NB_COMBI];
 
         unsigned char buffer[NB_WORD];

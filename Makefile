@@ -20,4 +20,4 @@ all: ${OBJ}
 	${CC} ${CFLAGS} ${OBJ} ${OCR_OBJ} -o ${EXE} ${LDFLAGS}
 
 clean:
-	${RM} ${OBJ} ${EXE}
+	${RM} ${OBJ} ${EXE} ${OCR_OBJ}
