@@ -6,7 +6,8 @@
 
 #include "wordle.h"
 
-#include "../ocr/src/ocr.h"
+#include "ocr.h"
+#include "wordle-grid.h"
 
 #define NB_TENTA 6
 
@@ -104,8 +105,7 @@ int main(int argc, char **argv)
         return 100;
     }
 
-    if (params.prev) {
-
+    if (params.ocrArgc) {
         unsigned char combi[NB_COMBI];
 
         unsigned char buffer[NB_WORD];
@@ -116,24 +116,19 @@ int main(int argc, char **argv)
 
         printf("Loadings imgs...\n");
 
-        for (size_t n = 0; n < params.imgs->size; n++)
-        {
-            printf("Processing: %s\n", (char*)params.imgs->data[n]);
+        char *** datas = ocr(params.ocrArgc, params.ocrArgv);
 
-            char ***datas = worlde_grid_from_image(params.imgs->data[n]);
-
+        if (datas) {
             for (size_t k = 0; datas[k]; k++) {
                 for (size_t i = 0; i < NB_COMBI; i++) {
                     combi[i] = 0;
                 }
-
+            
+                print_grid(datas[k]);
                 for (size_t i = 0; datas[k][i]; i++) {
-                    write(1, datas[k][i], 5);
-                    printf("\n");
                     combi[result_to_char(datas[k][i])]++;
-                    free(datas[k][i]);
                 }
-
+            
                 int count2 = 0;
                 for (size_t i = 0; i < NB_WORD; i++) {
                     for (size_t j = 0; j < NB_COMBI; j++) {
@@ -144,14 +139,22 @@ int main(int argc, char **argv)
                         }
                     }
                 }
-                free(datas[k]);
-
-                printf("removed %d word(s)\n", count2);
+                printf("Removed %d word(s) from discord image\n", count2);
             }
-
-            free(datas);
+        
+            free_wordle_grids(datas);
         }
-        printf("Done\n\n");
+    }
+
+    if (params.prev) {
+
+        unsigned char combi[NB_COMBI];
+
+        unsigned char buffer[NB_WORD];
+
+        char c = '\0';
+
+        int count = 0;
 
         printf("Please enter other's sequences\n");
         printf("Press enter 2 times to change sequence and 3 times to stop\n");

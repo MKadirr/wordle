@@ -15,6 +15,8 @@
 
 #define N_BESTS 10
 
+#define OCR_MAX_PARAMS 16
+
 struct Save
 {
     char *available;
@@ -68,7 +70,8 @@ struct Param
     
     int bench;
     int hard;
-    struct Vector* imgs;
+    char *ocrArgv[OCR_MAX_PARAMS];
+    int ocrArgc;
 };
 
 int compact(char a);

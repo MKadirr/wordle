@@ -12,24 +12,23 @@ void print_help_usage() {
     printf("OPTIONS:\n");
     printf("    -a run the programme automatically by using the optimal word (dont work very well)\n");
 
-    printf("    -w WORD       run the programme and autocomplete he wordle answer\n");
-    printf("    -t NB_THREAD  use the given number of thread to compute heavy calculation\n");
-    printf("    -d            disable all computation, simple game of wordle\n");
-    printf("    --bench       run the benchmark code: not ready yet\n");
-    printf("    --hard        specify the hard deficulty to compute optimal word: NOT IMPLEMENTED\n");
-    printf("    --help        display that programme\n");
-    printf("    --limited     run the programme with only wordle used word: some of in your wordle game may not be in that list\n");
-    printf("    -p            enable the filtering using other grid to reduce possibilities\n");
-    printf("    -r            choose a random word for that game\n");
-    printf("    -I PATH       path to discord's wordle's board images\n");
+    printf("    -w WORD         run the programme and autocomplete he wordle answer\n");
+    printf("    -t NB_THREAD    use the given number of thread to compute heavy calculation\n");
+    printf("    -d              disable all computation, simple game of wordle\n");
+    printf("    --bench         run the benchmark code: not ready yet\n");
+    printf("    --hard          specify the hard deficulty to compute optimal word: NOT IMPLEMENTED\n");
+    printf("    --help          display that programme\n");
+    printf("    --limited       run the programme with only wordle used word: some of in your wordle game may not be in that list\n");
+    printf("    -p              enable the filtering using other grid to reduce possibilities\n");
+    printf("    -r              choose a random word for that game\n");
+    printf("    -o              lauch Ocr for the discord server images\n");
+    printf("    --ocr [ARGV] \\; lauch Ocr for the discord server images with custom ocr arguments (--ocr --help \\; for help)\n");
 
 }
 
 struct Param parse_arg(int argc, char **argv)
 {
     struct Param ret = { 0 };
-
-    ret.imgs = ctr_vector();
 
     ret.nb_thread = 1;
 
@@ -39,20 +38,22 @@ struct Param parse_arg(int argc, char **argv)
         {
             ret.automat = 1;
         }
-        else if (!strcmp(argv[i], "-I")) {
-
-            if (i + 1 < argc)
-            {
+        else if (!strcmp(argv[i], "-o")) {
+            ret.ocrArgc = 0;
+            char *ocr_argv[] = { "ocr/ocr.exe", "--log-level", "info", NULL };
+            for (ret.ocrArgc; ocr_argv[ret.ocrArgc]; ret.ocrArgc++) {
+                ret.ocrArgv[ret.ocrArgc] = ocr_argv[ret.ocrArgc];
+            }
+        }
+        else if (!strcmp(argv[i], "--ocr")) {
+            ret.ocrArgv[0] = "ocr/ocr.exe";
+            ret.ocrArgc = 1;
+            i++;
+            while (i < argc && strcmp(argv[i], ";") && ret.ocrArgc < OCR_MAX_PARAMS) {
+                ret.ocrArgv[ret.ocrArgc] = argv[i];
+                ret.ocrArgc++;
                 i++;
-
-                push_vector(ret.imgs, argv[i]);
             }
-            else
-            {
-                fprintf(stderr, "-I used but no path given");
-                exit(1);
-            }
-
         }
         else if (!strcmp(argv[i], "-w"))
         {
