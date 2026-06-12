@@ -2,6 +2,18 @@ LOG_LEVEL=$1
 IMG_DIR=$2
 IMG_NAME_PATTERN=$3
 
+if [ "${LOG_LEVEL}" = "" ]; then
+    LOG_LEVEL="info"
+fi
+
+if [ "${IMG_DIR}" = "" ]; then
+    IMG_DIR="images"
+fi
+
+if [ "${IMG_NAME_PATTERN}" = "" ]; then
+    IMG_NAME_PATTERN="Image-%d.png"
+fi
+
 URL="https://discordbotdockered.onrender.com/daily-wordle"
 
 DEBUG() {
