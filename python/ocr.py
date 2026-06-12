@@ -296,6 +296,11 @@ def toImg(matrix : list[list[Color]]) -> Image:
 def isolateWordleSquares(imageFilename, resultFilename, dataOutputType : DataType = DataType.MATRIX, withIntermediate = False):
     image = Image.open(f"{IMG_DIR}/{imageFilename}")
     imgMatrix = toMatrix(image)
+
+    if withIntermediate:
+        preproccesImg = toImg(imgMatrix)
+        preproccesImg.save(f"{IMG_DIR}/colored-{resultFilename}")
+    
     height = len(imgMatrix)
     width = len(imgMatrix[0]) if height > 0 else 0
     squares = find_squares(imgMatrix)
