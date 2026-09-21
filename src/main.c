@@ -100,6 +100,8 @@ int main(int argc, char **argv)
     struct Save data = {
         .available = available, 
         .from_wordle = from_wordle, 
+        .prev = 0,
+        .prev_ans = 0,
         .turn = 0 };
 
     char buffer[WORD_SIZE + 1];

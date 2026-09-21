@@ -34,6 +34,9 @@ void copy_save(struct Save* src, struct Save* dst)
     }
 
     dst->turn = src->turn;
+    dst->prev = src->prev;
+    dst->prev_ans = src->prev_ans;
+    // printf("copying values: prev %d, prev ans: %d\n", dst->prev, dst->prev_ans);
 }
 
 struct Save* clone_save(struct Save* value)
@@ -49,7 +52,6 @@ struct Save* clone_save(struct Save* value)
 
     return ret;
 }
-
 
 void free_save(struct Save* ptr)
 {
@@ -68,13 +70,13 @@ unsigned char result_to_char(const char *buffer) {
     for (size_t i = 0; i < WORD_SIZE; i++) {
         ret *= 3;
         switch (buffer[i]) {
-            case 'y':
+            case 'n':
                 ret += 0;
                 break;
             case 'm':
                 ret += 1;
                 break;
-            case 'n':
+            case 'y':
                 ret += 2;
                 break;
         }
@@ -87,18 +89,77 @@ unsigned char result_to_char(const char *buffer) {
     return ret;
 }
 
+void char_to_result(char a, char ret[WORD_SIZE]) {
+
+    for (size_t i = 0; i < WORD_SIZE; i++) {
+        // printf("%hhd ", a % 3);
+        switch (a % 3) {
+            case 0:
+                // printf("n | ");
+                ret[WORD_SIZE - 1 - i] = 'n';
+                break;
+            case 1:
+                // printf("m | ");
+                ret[WORD_SIZE - 1 - i] = 'm';
+                break;
+            case 2:
+                // printf("y | ");
+                ret[WORD_SIZE - 1 - i] = 'y';
+                break;
+        }
+
+        a /= 3;
+    }
+
+    // printf("\n");
+}
+
+int valid_hard(int prev, char prev_ans, int idx) {
+
+    char answer[WORD_SIZE + 1] = { 0 }; 
+    char_to_result(prev_ans, answer);
+
+    // printf(" prev = %s, idx = %s, char_to_result: %s\n", dataset[prev], dataset[idx], answer);
+
+    int data = 0;
+    int req = 0;
+
+    for (int i = 0; i < WORD_SIZE; i++) {
+        // compact answer
+        data |= compact(dataset[idx][i]);
+        
+        if (answer[i] == 'y' && dataset[idx][i] != dataset[prev][i])
+            return 0;
+
+        if (answer[i] == 'm')
+            req |= compact(dataset[prev][i]);
+    }
+
+    return (data & req) == req;
+}
+
 
 unsigned char get_combi(const char *buffer, const char *expect) {
-    char result[WORD_SIZE + 1];
+   // char result[WORD_SIZE + 1];
     
+    unsigned char ret = 0;
+
     char tmp[WORD_SIZE + 1];
+    char histo[26];
     for (size_t i = 0; i < WORD_SIZE; i++) {
         tmp[i] = expect[i];
     }
+
+    for (int i = 0; i < WORD_SIZE; i++) {
+        histo[buffer[i] - 'a']+=1;
+    }
     
     for (int i = 0; i < WORD_SIZE; i++) {
+        ret *= 3;
+
         if (buffer[i] == tmp[i]) {
-            result[i] = 'y';
+            // result[i] = 'y';
+            ret += 2;
         }
         else {
             int find = 0;
@@ -110,12 +171,13 @@ unsigned char get_combi(const char *buffer, const char *expect) {
                 }
             }
 
-            result[i] = find ? 'm' : 'n';
+            ret += find ? 1 : 0;
+            // result[i] = find ? 'm' : 'n';
         }
     }
 
 
-    return result_to_char(result);
+    return ret; // result_to_char(result);
 }
 
 struct initData {
@@ -240,6 +302,9 @@ void update_available(struct Save *data, const char *buffer, const char *result)
 
     const unsigned char combi = result_to_char(result);
 
+    data->prev = tmp;
+    data->prev_ans = combi;
+
     for (size_t i = 0; i < NB_WORD; i++)
     {
         data->available[i] &= combi == mat[tmp][i];
@@ -298,14 +363,18 @@ int find_best_thread_less(struct Save *status, size_t start, size_t end) {
     // printf("0 ");
     for (size_t i = start; i < end; i++)
     {
-        // if (params.hard > 0 && !valid_hard()) {
-        // TODO 
-        // }
-
-        struct Score score_all = scores(status, i);
-
-        double score = score_all.E;
         
+        double score = 0;
+
+        if (!params.hard || valid_hard(status->prev, status->prev_ans, i)) {
+            struct Score score_all = scores(status, i);
+
+            score = score_all.E;
+            // printf("score = %f \n", score);
+        }
+        else {
+            score = -1;
+        }
         // printf("%s = %f\n", dataset[i], score);
         insert_best(i, score, status->bests_idx, status->bests);
     }
