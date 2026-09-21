@@ -142,42 +142,60 @@ int valid_hard(int prev, char prev_ans, int idx) {
 unsigned char get_combi(const char *buffer, const char *expect) {
    // char result[WORD_SIZE + 1];
     
-    unsigned char ret = 0;
+    // unsigned char ret = 0;
 
-    char tmp[WORD_SIZE + 1];
-    char histo[26];
-    for (size_t i = 0; i < WORD_SIZE; i++) {
-        tmp[i] = expect[i];
-    }
-
-    for (int i = 0; i < WORD_SIZE; i++) {
-        histo[buffer[i] - 'a']+=1;
-    }
+    // char tmp[WORD_SIZE + 1];
+    char histo[26] = { 0 };
     
-    for (int i = 0; i < WORD_SIZE; i++) {
-        ret *= 3;
+    unsigned char ret1 = 0;
+    for (size_t i = 0; i < WORD_SIZE; i++) {
+        ret1 *= 3;
 
-        if (buffer[i] == tmp[i]) {
-            // result[i] = 'y';
-            ret += 2;
+        if (buffer[i] == expect[i]) {
+            ret1 += 2;
         }
         else {
-            int find = 0;
-            for (int j = 0; j < WORD_SIZE; j++) {
-                if (i != j && tmp[j] == buffer[i] && buffer[j] != tmp[j]) {
-                    find += 1;
-                    tmp[j] = 0;
-                    break;
-                }
-            }
-
-            ret += find ? 1 : 0;
-            // result[i] = find ? 'm' : 'n';
+            histo[expect[i] - 'a']++;
         }
+
     }
 
+    unsigned char ret2 = 0;
+    for (int i = 0; i < WORD_SIZE; i++) {
+        ret2 *= 3;
 
-    return ret; // result_to_char(result);
+        if (buffer[i] != expect[i] && histo[buffer[i] - 'a']) {
+            ret2 += 1;
+            histo[buffer[i] - 'a']--;
+        }
+    }
+    
+    // for (int i = 0; i < WORD_SIZE; i++) {
+    //     ret *= 3;
+    //     char val= buffer[i] - 'a';
+
+    //     if (buffer[i] == tmp[i]) {
+    //         // result[i] = 'y'; // e = pager | b = rager
+    //         histo[val] -= 1
+    //         ret += 2;
+    //     }
+    //     else {
+    //         int find = 0;
+    //         for (int j = 0; j < WORD_SIZE; j++) {
+    //             if (i != j && tmp[j] == buffer[i] && buffer[j] != tmp[j]) {
+    //                 find += 1;
+    //                 tmp[j] = 0;
+    //                 break;
+    //             }
+    //         }
+
+    //         ret += find ? 1 : 0;
+    //         // result[i] = find ? 'm' : 'n';
+    //     }
+    // }
+
+
+    return ret1 + ret2; // result_to_char(result);
 }
 
 struct initData {

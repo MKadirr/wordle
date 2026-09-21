@@ -5,9 +5,9 @@ SRC=$(wildcard src/*.c)
 OBJ=${SRC:.c=.o}
 EXE=solver.out
 
-# CFLAGS=-lm -g -O0 -fsanitize=address $(INCLUDE)
-# CFLAGS=-lm -O3 $(INCLUDE)
-CFLAGS=-lm -O0 $(INCLUDE) -g
+# CFLAGS=-lm -g -O0 -fsanitize=address $(INCLUDE)   # debug
+# CFLAGS=-lm -O3 $(INCLUDE)                         # release
+CFLAGS=-lm -O0 $(INCLUDE) -g3                       # perf
 LDFLAGS=-fsanitize=address -lpng
 LDFLAGS= -lpng -lm
 

@@ -76,8 +76,8 @@ int bench(struct Save* data) {
     test = gettimeofday(&step1, NULL);
     
     int tmp = find_best(data, params.nb_thread);
-    printf("conseil: %s\n", dataset[tmp]);
     test = gettimeofday(&step2, NULL);
+    printf("conseil: %s\n", dataset[tmp]);
 
     long start_t = start.tv_sec * 1000000 + start.tv_usec;
     long step1_t = step1.tv_sec * 1000000 + step1.tv_usec;
