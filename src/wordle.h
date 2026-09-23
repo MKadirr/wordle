@@ -70,6 +70,7 @@ struct Param
     int limited;
     int prev;
     int rand;
+    char* load;
     
     int bench;
     int hard;

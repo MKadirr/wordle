@@ -18,7 +18,7 @@ extern unsigned char mat[NB_WORD][NB_WORD];
 extern int combis[NB_WORD][NB_COMBI];
 extern struct Param params;
 
-struct Score scores(struct Save *data, size_t i);
+double scores(struct Save *data, size_t i);
 
 void copy_save(struct Save* src, struct Save* dst)
 {
@@ -169,31 +169,6 @@ unsigned char get_combi(const char *buffer, const char *expect) {
             histo[buffer[i] - 'a']--;
         }
     }
-    
-    // for (int i = 0; i < WORD_SIZE; i++) {
-    //     ret *= 3;
-    //     char val= buffer[i] - 'a';
-
-    //     if (buffer[i] == tmp[i]) {
-    //         // result[i] = 'y'; // e = pager | b = rager
-    //         histo[val] -= 1
-    //         ret += 2;
-    //     }
-    //     else {
-    //         int find = 0;
-    //         for (int j = 0; j < WORD_SIZE; j++) {
-    //             if (i != j && tmp[j] == buffer[i] && buffer[j] != tmp[j]) {
-    //                 find += 1;
-    //                 tmp[j] = 0;
-    //                 break;
-    //             }
-    //         }
-
-    //         ret += find ? 1 : 0;
-    //         // result[i] = find ? 'm' : 'n';
-    //     }
-    // }
-
 
     return ret1 + ret2; // result_to_char(result);
 }
@@ -267,16 +242,10 @@ void init(struct Save *data, char *buffer, char *result, struct Param params)
 
         while (tmp < 0 && j < NB_WORD)
         {
-            // printf("%s | %s\n", dataset[j], used[i]);
             tmp = strcmp(dataset[j], used[i]);
             data->from_wordle[j] = tmp == 0;
             j++;
         }
-
-        // if (tmp == 0) {
-        //     printf("-> %s | %s\n", dataset[j], used[i]);
-        //     data->from_wordle[j - 1] = 1;
-        // }
     }
 
     if (params.limited)
@@ -385,9 +354,7 @@ int find_best_thread_less(struct Save *status, size_t start, size_t end) {
         double score = 0;
 
         if (!params.hard || valid_hard(status->prev, status->prev_ans, i)) {
-            struct Score score_all = scores(status, i);
-
-            score = score_all.E;
+            score = scores(status, i);
             // printf("score = %f \n", score);
         }
         else {
@@ -402,7 +369,7 @@ int find_best_thread_less(struct Save *status, size_t start, size_t end) {
     return status->bests_idx[0];
 }
 
-struct Score scores(struct Save *data, size_t i)
+double scores(struct Save *data, size_t i)
 {
     double rep[NB_COMBI];
 
@@ -460,36 +427,7 @@ struct Score scores(struct Save *data, size_t i)
 
     free_save(rec_save);
 
-    double mean = sum / NB_COMBI;
-    // printf("sum: %f, mean: %f ", sum, mean);
-
-    sum = 0;
-
-    double max = -1;
-
-    for (int i = 0; i < NB_COMBI; i++)
-    {
-        double tmp = rep[i] - mean;
-        sum += tmp * tmp;
-
-        if (max < rep[i])
-        {
-            max = rep[i];
-        }
-    }
-
-    // printf("\n");
-
-    // exit(42);
-
-    struct Score ret;
-
-    ret.mean = mean;
-    ret.std = sum / NB_COMBI;
-    ret.max = max;
-    ret.E = - E;
-
-    return ret;
+    return -E;
 }
 
 void *worker(void *arg)

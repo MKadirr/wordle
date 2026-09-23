@@ -84,7 +84,7 @@ int bench(struct Save* data) {
     long step2_t = step2.tv_sec * 1000000 + step2.tv_usec;
 
     // printf("%ld;%ld;%ld\n", start_t, step1_t, step2_t);
-    printf("%ld;%ld\n", step1_t - start_t, step2_t - start_t);
+    printf("%ld;%ld\n", step1_t - start_t, step2_t - step1_t);
 }
 
 int main(int argc, char **argv)
