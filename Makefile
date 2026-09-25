@@ -6,10 +6,12 @@ OBJ=${SRC:.c=.o}
 EXE=solver.out
 
 # CFLAGS=-lm -g -O0 -fsanitize=address $(INCLUDE)   # debug
-# CFLAGS=-lm -O3 $(INCLUDE)                         # release
-CFLAGS=-lm -O0 $(INCLUDE) -g3                       # perf
-LDFLAGS=-fsanitize=address -lpng
-LDFLAGS= -lpng -lm
+# CFLAGS=-lm -O3 $(INCLUDE) -mtune=native           # release
+CFLAGS=-lm -O3 $(INCLUDE) -mtune=native -g3         # perf
+# CFLAGS=-lm -O3 $(INCLUDE) -g3                     # perf
+
+# LDFLAGS=-fsanitize=address -lpng                  # ASAN
+LDFLAGS= -lpng -lm                                  # release
 
 OCR_SRC_FILE=$(wildcard ocr/src/*.c) $(wildcard ocr/src/*/*.c)
 OCR_SRC=$(filter-out ocr/src/main.c, ${OCR_SRC_FILE})

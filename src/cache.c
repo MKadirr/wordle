@@ -65,7 +65,7 @@ struct cache* cache_load(const char* cache_file) {
 
 
 int cache_save(struct cache* cache, const char* path) {
-    int fd = open(path, O_WRONLY | O_CREAT);
+    int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
     write(fd, &cache->header, sizeof(struct cache_header));
 

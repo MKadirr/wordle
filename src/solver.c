@@ -186,7 +186,7 @@ void *worker_init(void *arg)
     for (size_t i = data->begin; i < data->end; i++)
     {
         for (size_t j = 0; j < NB_WORD; j++) {
-            mat[i][j] = get_combi(dataset[i], dataset[j]);
+            mat[j][i] = get_combi(dataset[i], dataset[j]);
         }
     }
 }
@@ -256,21 +256,21 @@ void init(struct Save *data, char *buffer, char *result, struct Param params)
         }
     }
 
-    printf("Starting matrix: ");
+    fprintf(stderr, "Starting matrix: ");
     init_math(params.nb_thread); 
-    printf("Done\n");
+    fprintf(stderr, "Done\n");
 
-    printf("Starting combis count: ");
+    fprintf(stderr, "Starting combis count: ");
     for (size_t i = 0; i < NB_WORD; i++) {
         for (size_t j = 0; j < NB_COMBI; j++) {
             combis[i][j] = 0;
         }
 
         for (size_t j = 0; j < NB_WORD; j++) {
-            combis[i][mat[j][i]]++;
+            combis[i][mat[i][j]]++;
         }
     }
-    printf("Done\n");
+    fprintf(stderr, "Done\n");
 
     buffer[WORD_SIZE] = 0;
     result[WORD_SIZE] = 0;
@@ -294,7 +294,7 @@ void update_available(struct Save *data, const char *buffer, const char *result)
 
     for (size_t i = 0; i < NB_WORD; i++)
     {
-        data->available[i] &= combi == mat[tmp][i];
+        data->available[i] &= combi == mat[i][tmp];
     }
 }
 
@@ -303,7 +303,7 @@ void update_available2(struct Save *data, size_t idx, const unsigned char combi)
 {
     for (size_t i = 0; i < NB_WORD; i++)
     {
-        data->available[i] &= combi == mat[idx][i];
+        data->available[i] &= combi == mat[i][idx];
     }
 }
 
@@ -350,7 +350,7 @@ int find_best_thread_less(struct Save *status, size_t start, size_t end) {
     // printf("0 ");
     for (size_t i = start; i < end; i++)
     {
-        
+        // if (end != NB_WORD)  printf("thread: %6zu/%6zu/%6zu %f\n", start, i, end, (float)(i - start) / (float)(end - start) * 100.f);
         double score = 0;
 
         if (!params.hard || valid_hard(status->prev, status->prev_ans, i)) {
@@ -358,7 +358,7 @@ int find_best_thread_less(struct Save *status, size_t start, size_t end) {
             // printf("score = %f \n", score);
         }
         else {
-            score = -1;
+            score = 0;
         }
         // printf("%s = %f\n", dataset[i], score);
         insert_best(i, score, status->bests_idx, status->bests);
@@ -369,23 +369,29 @@ int find_best_thread_less(struct Save *status, size_t start, size_t end) {
     return status->bests_idx[0];
 }
 
+void copy_update_avai(struct Save* src, struct Save* dst, size_t idx, const unsigned char combi) {
+    for (int i = 0; i < N_BESTS; i++) 
+    {
+        dst->bests[i] = 1000000.0;
+        dst->bests_idx[i] = -1;
+    }
+
+    for (size_t i = 0; i < NB_WORD; i++)
+    {
+        dst->available[i] = src->available[i] & combi == mat[i][idx];
+    }
+}
+
 double scores(struct Save *data, size_t i)
 {
-    double rep[NB_COMBI];
+    int rep[NB_COMBI];
 
     for (size_t j = 0; j < NB_COMBI; j++) {
         rep[j] = 0;
     }
 
     for (size_t j = 0; j < NB_WORD; j++) {
-        if (mat[j][i] >= NB_COMBI) {
-            printf("Something fuck up : %d\n", mat[j][i]);
-        }
-        else {
-            if (data->available[j]) {
-                rep[mat[j][i]] += 1;
-            }
-        }
+        rep[mat[i][j]] += data->available[j];
     }
 
     // printf("] ");
@@ -399,6 +405,7 @@ double scores(struct Save *data, size_t i)
     }
 
     struct Save* rec_save = clone_save(data);
+    rec_save->turn += 1;
 
     double p = 0;
     for (size_t j = 0; j < NB_COMBI; j++) {
@@ -406,11 +413,13 @@ double scores(struct Save *data, size_t i)
             p = rep[j] / sum;
 
             if (data->turn < NB_TENTA - NB_TENTA) {
-                printf("depth: %d, combi: %d,  word: %s, \n", data->turn, j, dataset[i]);
+                // printf("depth: %d, combi: %d,  word: %s, \n", data->turn, j, dataset[i]);
 
-                copy_save(data, rec_save);
-                rec_save->turn += 1;
-                update_available2(rec_save, i, (const unsigned char)j);
+                copy_update_avai(data, rec_save, i, j);
+
+                // copy_save(data, rec_save);
+                // rec_save->turn += 1;
+                // update_available2(rec_save, i, (const unsigned char)j);
 
                 int best_idx = find_best_thread_less(rec_save, 0, NB_WORD);
 
@@ -420,7 +429,7 @@ double scores(struct Save *data, size_t i)
             }
 
 
-            E += p * log2(1. / p);
+            E -= p * log2(p);
             // printf("p = %f => E = %f\n", p, E);
         }
     }
