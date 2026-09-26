@@ -76,15 +76,15 @@ int bench(struct Save* data) {
     test = gettimeofday(&step1, NULL);
     
     int tmp = find_best(data, params.nb_thread);
-    printf("conseil: %s\n", dataset[tmp]);
     test = gettimeofday(&step2, NULL);
+    fprintf(stderr, "conseil: %s\n", dataset[tmp]);
 
     long start_t = start.tv_sec * 1000000 + start.tv_usec;
     long step1_t = step1.tv_sec * 1000000 + step1.tv_usec;
     long step2_t = step2.tv_sec * 1000000 + step2.tv_usec;
 
     // printf("%ld;%ld;%ld\n", start_t, step1_t, step2_t);
-    printf("%ld;%ld\n", step1_t - start_t, step2_t - start_t);
+    printf("%ld;%ld\n", step1_t - start_t, step2_t - step1_t);
 }
 
 int main(int argc, char **argv)
@@ -100,6 +100,8 @@ int main(int argc, char **argv)
     struct Save data = {
         .available = available, 
         .from_wordle = from_wordle, 
+        .prev = 0,
+        .prev_ans = 0,
         .turn = 0 };
 
     char buffer[WORD_SIZE + 1];

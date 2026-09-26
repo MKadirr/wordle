@@ -18,7 +18,7 @@ extern unsigned char mat[NB_WORD][NB_WORD];
 extern int combis[NB_WORD][NB_COMBI];
 extern struct Param params;
 
-struct Score scores(struct Save *data, size_t i);
+double scores(struct Save *data, size_t i);
 
 void copy_save(struct Save* src, struct Save* dst)
 {
@@ -34,6 +34,9 @@ void copy_save(struct Save* src, struct Save* dst)
     }
 
     dst->turn = src->turn;
+    dst->prev = src->prev;
+    dst->prev_ans = src->prev_ans;
+    // printf("copying values: prev %d, prev ans: %d\n", dst->prev, dst->prev_ans);
 }
 
 struct Save* clone_save(struct Save* value)
@@ -49,7 +52,6 @@ struct Save* clone_save(struct Save* value)
 
     return ret;
 }
-
 
 void free_save(struct Save* ptr)
 {
@@ -68,13 +70,13 @@ unsigned char result_to_char(const char *buffer) {
     for (size_t i = 0; i < WORD_SIZE; i++) {
         ret *= 3;
         switch (buffer[i]) {
-            case 'y':
+            case 'n':
                 ret += 0;
                 break;
             case 'm':
                 ret += 1;
                 break;
-            case 'n':
+            case 'y':
                 ret += 2;
                 break;
         }
@@ -87,35 +89,88 @@ unsigned char result_to_char(const char *buffer) {
     return ret;
 }
 
+void char_to_result(char a, char ret[WORD_SIZE]) {
+
+    for (size_t i = 0; i < WORD_SIZE; i++) {
+        // printf("%hhd ", a % 3);
+        switch (a % 3) {
+            case 0:
+                // printf("n | ");
+                ret[WORD_SIZE - 1 - i] = 'n';
+                break;
+            case 1:
+                // printf("m | ");
+                ret[WORD_SIZE - 1 - i] = 'm';
+                break;
+            case 2:
+                // printf("y | ");
+                ret[WORD_SIZE - 1 - i] = 'y';
+                break;
+        }
+
+        a /= 3;
+    }
+
+    // printf("\n");
+}
+
+int valid_hard(int prev, char prev_ans, int idx) {
+
+    char answer[WORD_SIZE + 1] = { 0 }; 
+    char_to_result(prev_ans, answer);
+
+    // printf(" prev = %s, idx = %s, char_to_result: %s\n", dataset[prev], dataset[idx], answer);
+
+    int data = 0;
+    int req = 0;
+
+    for (int i = 0; i < WORD_SIZE; i++) {
+        // compact answer
+        data |= compact(dataset[idx][i]);
+        
+        if (answer[i] == 'y' && dataset[idx][i] != dataset[prev][i])
+            return 0;
+
+        if (answer[i] == 'm')
+            req |= compact(dataset[prev][i]);
+    }
+
+    return (data & req) == req;
+}
+
 
 unsigned char get_combi(const char *buffer, const char *expect) {
-    char result[WORD_SIZE + 1];
+   // char result[WORD_SIZE + 1];
     
-    char tmp[WORD_SIZE + 1];
+    // unsigned char ret = 0;
+
+    // char tmp[WORD_SIZE + 1];
+    char histo[26] = { 0 };
+    
+    unsigned char ret1 = 0;
     for (size_t i = 0; i < WORD_SIZE; i++) {
-        tmp[i] = expect[i];
-    }
-    
-    for (int i = 0; i < WORD_SIZE; i++) {
-        if (buffer[i] == tmp[i]) {
-            result[i] = 'y';
+        ret1 *= 3;
+
+        if (buffer[i] == expect[i]) {
+            ret1 += 2;
         }
         else {
-            int find = 0;
-            for (int j = 0; j < WORD_SIZE; j++) {
-                if (i != j && tmp[j] == buffer[i] && buffer[j] != tmp[j]) {
-                    find += 1;
-                    tmp[j] = 0;
-                    break;
-                }
-            }
+            histo[expect[i] - 'a']++;
+        }
 
-            result[i] = find ? 'm' : 'n';
+    }
+
+    unsigned char ret2 = 0;
+    for (int i = 0; i < WORD_SIZE; i++) {
+        ret2 *= 3;
+
+        if (buffer[i] != expect[i] && histo[buffer[i] - 'a']) {
+            ret2 += 1;
+            histo[buffer[i] - 'a']--;
         }
     }
 
-
-    return result_to_char(result);
+    return ret1 + ret2; // result_to_char(result);
 }
 
 struct initData {
@@ -131,7 +186,7 @@ void *worker_init(void *arg)
     for (size_t i = data->begin; i < data->end; i++)
     {
         for (size_t j = 0; j < NB_WORD; j++) {
-            mat[i][j] = get_combi(dataset[i], dataset[j]);
+            mat[j][i] = get_combi(dataset[i], dataset[j]);
         }
     }
 }
@@ -187,16 +242,10 @@ void init(struct Save *data, char *buffer, char *result, struct Param params)
 
         while (tmp < 0 && j < NB_WORD)
         {
-            // printf("%s | %s\n", dataset[j], used[i]);
             tmp = strcmp(dataset[j], used[i]);
             data->from_wordle[j] = tmp == 0;
             j++;
         }
-
-        // if (tmp == 0) {
-        //     printf("-> %s | %s\n", dataset[j], used[i]);
-        //     data->from_wordle[j - 1] = 1;
-        // }
     }
 
     if (params.limited)
@@ -207,21 +256,21 @@ void init(struct Save *data, char *buffer, char *result, struct Param params)
         }
     }
 
-    printf("Starting matrix: ");
+    fprintf(stderr, "Starting matrix: ");
     init_math(params.nb_thread); 
-    printf("Done\n");
+    fprintf(stderr, "Done\n");
 
-    printf("Starting combis count: ");
+    fprintf(stderr, "Starting combis count: ");
     for (size_t i = 0; i < NB_WORD; i++) {
         for (size_t j = 0; j < NB_COMBI; j++) {
             combis[i][j] = 0;
         }
 
         for (size_t j = 0; j < NB_WORD; j++) {
-            combis[i][mat[j][i]]++;
+            combis[i][mat[i][j]]++;
         }
     }
-    printf("Done\n");
+    fprintf(stderr, "Done\n");
 
     buffer[WORD_SIZE] = 0;
     result[WORD_SIZE] = 0;
@@ -240,9 +289,12 @@ void update_available(struct Save *data, const char *buffer, const char *result)
 
     const unsigned char combi = result_to_char(result);
 
+    data->prev = tmp;
+    data->prev_ans = combi;
+
     for (size_t i = 0; i < NB_WORD; i++)
     {
-        data->available[i] &= combi == mat[tmp][i];
+        data->available[i] &= combi == mat[i][tmp];
     }
 }
 
@@ -251,7 +303,7 @@ void update_available2(struct Save *data, size_t idx, const unsigned char combi)
 {
     for (size_t i = 0; i < NB_WORD; i++)
     {
-        data->available[i] &= combi == mat[idx][i];
+        data->available[i] &= combi == mat[i][idx];
     }
 }
 
@@ -298,14 +350,16 @@ int find_best_thread_less(struct Save *status, size_t start, size_t end) {
     // printf("0 ");
     for (size_t i = start; i < end; i++)
     {
-        // if (params.hard > 0 && !valid_hard()) {
-        // TODO 
-        // }
+        // if (end != NB_WORD)  printf("thread: %6zu/%6zu/%6zu %f\n", start, i, end, (float)(i - start) / (float)(end - start) * 100.f);
+        double score = 0;
 
-        struct Score score_all = scores(status, i);
-
-        double score = score_all.E;
-        
+        if (!params.hard || valid_hard(status->prev, status->prev_ans, i)) {
+            score = scores(status, i);
+            // printf("score = %f \n", score);
+        }
+        else {
+            score = 0;
+        }
         // printf("%s = %f\n", dataset[i], score);
         insert_best(i, score, status->bests_idx, status->bests);
     }
@@ -315,23 +369,29 @@ int find_best_thread_less(struct Save *status, size_t start, size_t end) {
     return status->bests_idx[0];
 }
 
-struct Score scores(struct Save *data, size_t i)
+void copy_update_avai(struct Save* src, struct Save* dst, size_t idx, const unsigned char combi) {
+    for (int i = 0; i < N_BESTS; i++) 
+    {
+        dst->bests[i] = 1000000.0;
+        dst->bests_idx[i] = -1;
+    }
+
+    for (size_t i = 0; i < NB_WORD; i++)
+    {
+        dst->available[i] = src->available[i] & combi == mat[i][idx];
+    }
+}
+
+double scores(struct Save *data, size_t i)
 {
-    double rep[NB_COMBI];
+    int rep[NB_COMBI];
 
     for (size_t j = 0; j < NB_COMBI; j++) {
         rep[j] = 0;
     }
 
     for (size_t j = 0; j < NB_WORD; j++) {
-        if (mat[j][i] >= NB_COMBI) {
-            printf("Something fuck up : %d\n", mat[j][i]);
-        }
-        else {
-            if (data->available[j]) {
-                rep[mat[j][i]] += 1;
-            }
-        }
+        rep[mat[i][j]] += data->available[j];
     }
 
     // printf("] ");
@@ -345,6 +405,7 @@ struct Score scores(struct Save *data, size_t i)
     }
 
     struct Save* rec_save = clone_save(data);
+    rec_save->turn += 1;
 
     double p = 0;
     for (size_t j = 0; j < NB_COMBI; j++) {
@@ -352,11 +413,13 @@ struct Score scores(struct Save *data, size_t i)
             p = rep[j] / sum;
 
             if (data->turn < NB_TENTA - NB_TENTA) {
-                printf("depth: %d, combi: %d,  word: %s, \n", data->turn, j, dataset[i]);
+                // printf("depth: %d, combi: %d,  word: %s, \n", data->turn, j, dataset[i]);
 
-                copy_save(data, rec_save);
-                rec_save->turn += 1;
-                update_available2(rec_save, i, (const unsigned char)j);
+                copy_update_avai(data, rec_save, i, j);
+
+                // copy_save(data, rec_save);
+                // rec_save->turn += 1;
+                // update_available2(rec_save, i, (const unsigned char)j);
 
                 int best_idx = find_best_thread_less(rec_save, 0, NB_WORD);
 
@@ -366,43 +429,14 @@ struct Score scores(struct Save *data, size_t i)
             }
 
 
-            E += p * log2(1. / p);
+            E -= p * log2(p);
             // printf("p = %f => E = %f\n", p, E);
         }
     }
 
     free_save(rec_save);
 
-    double mean = sum / NB_COMBI;
-    // printf("sum: %f, mean: %f ", sum, mean);
-
-    sum = 0;
-
-    double max = -1;
-
-    for (int i = 0; i < NB_COMBI; i++)
-    {
-        double tmp = rep[i] - mean;
-        sum += tmp * tmp;
-
-        if (max < rep[i])
-        {
-            max = rep[i];
-        }
-    }
-
-    // printf("\n");
-
-    // exit(42);
-
-    struct Score ret;
-
-    ret.mean = mean;
-    ret.std = sum / NB_COMBI;
-    ret.max = max;
-    ret.E = - E;
-
-    return ret;
+    return -E;
 }
 
 void *worker(void *arg)
