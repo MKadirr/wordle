@@ -6,6 +6,9 @@
 #include <assert.h>
 #include <math.h>
 #include <time.h>
+#include <stdalign.h>
+#include <immintrin.h>
+
 
 #include "wordle.h"
 
@@ -14,8 +17,9 @@ extern const char *dataset[];
 extern const char *used[];
 
 // main.c
-extern unsigned char mat[NB_WORD][NB_WORD];
-extern int combis[NB_WORD][NB_COMBI];
+unsigned char mat[NB_WORD_PACKED * WORD_PAR_PACKED][NB_WORD_PACKED * WORD_PAR_PACKED];
+alignas(32) unsigned long long mat2[NB_WORD][NB_COMBI][NB_WORD_PACKED];
+int combis[NB_WORD][NB_COMBI];
 extern struct Param params;
 
 double scores(struct Save *data, size_t i);
@@ -23,7 +27,7 @@ double scores(struct Save *data, size_t i);
 void copy_save(struct Save* src, struct Save* dst)
 {
     // printf("copy\n");
-    memcpy(dst->available, src->available, sizeof(char) * NB_WORD);
+    memcpy(dst->available, src->available, sizeof(PACKED_TYPE) * NB_WORD_PACKED);
     
     // memcpy(dst->from_wordle, src->from_wordle, sizeof(char) * NB_WORD);
 
@@ -43,7 +47,7 @@ struct Save* clone_save(struct Save* value)
 {
     // printf("clone\n");
     struct Save* ret = calloc(1, sizeof(struct Save));
-    ret->available = calloc(NB_WORD, sizeof(char));
+    ret->available = calloc(NB_WORD_PACKED, sizeof(PACKED_TYPE));
     
     // This data is never modified
     ret->from_wordle = value->from_wordle;
@@ -187,6 +191,8 @@ void *worker_init(void *arg)
     {
         for (size_t j = 0; j < NB_WORD; j++) {
             mat[j][i] = get_combi(dataset[i], dataset[j]);
+
+            mat2[j][mat[j][i]][IDX_CALC(i)] |= MASK_CALC(i);
         }
     }
 }
@@ -229,12 +235,6 @@ void init_math(int nb_thread)
 
 void init(struct Save *data, char *buffer, char *result, struct Param params)
 {
-    for (int i = 0; i < NB_WORD; i++)
-    {
-        data->available[i] = 1;
-    }
-
-
     size_t j = 0;
     for (size_t i = 0; i < NB_USED; i++)
     {
@@ -252,7 +252,13 @@ void init(struct Save *data, char *buffer, char *result, struct Param params)
     {
         for (size_t i = 0; i < NB_WORD; i++)
         {
-            data->available[i] = data->from_wordle[i];
+            data->available[IDX_CALC(i)] += MASK_CALC(i) * data->from_wordle[i];
+        }
+    }
+    else {
+        for (int i = 0; i < NB_WORD_PACKED; i++)
+        {
+            data->available[i] |= -1LL;
         }
     }
 
@@ -292,18 +298,39 @@ void update_available(struct Save *data, const char *buffer, const char *result)
     data->prev = tmp;
     data->prev_ans = combi;
 
-    for (size_t i = 0; i < NB_WORD; i++)
+    for (size_t i = 0; i < NB_WORD_PACKED; i++)
     {
-        data->available[i] &= combi == mat[i][tmp];
+        PACKED_TYPE tmp2 = 0;
+        for (int j = 0; j < WORD_PAR_PACKED; j++) {
+            tmp2 |= (1LL << j) * (combi == mat[i * WORD_PAR_PACKED + j][tmp]);
+        }
+
+        data->available[i] &= tmp2;
     }
 }
 
 
 void update_available2(struct Save *data, size_t idx, const unsigned char combi)
 {
-    for (size_t i = 0; i < NB_WORD; i++)
+    for (size_t i = 0; i < NB_WORD_PACKED; i++)
     {
-        data->available[i] &= combi == mat[i][idx];
+        PACKED_TYPE tmp = 0;
+        for (int j = 0; j < WORD_PAR_PACKED; j++) {
+            tmp |= (1LL << j) * (combi == mat[i * WORD_PAR_PACKED + j][idx]);
+        }
+
+        data->available[i] &= tmp;
+    }
+}
+
+void update_available3(struct Save *data, size_t idx, const unsigned char combi)
+{
+    for (size_t i = 0; i < NB_WORD_PACKED; i += sizeof(__m256i) / sizeof(PACKED_TYPE))
+    {
+        __m256i va = _mm256_load_si256((__m256i*)&data->available[i]);
+        __m256i vb = _mm256_load_si256((__m256i*)&mat2[idx][combi][i]);
+        __m256i vr = _mm256_and_si256(va, vb);
+        _mm256_store_si256((__m256i *)&data->available[i], vr);
     }
 }
 
@@ -376,9 +403,14 @@ void copy_update_avai(struct Save* src, struct Save* dst, size_t idx, const unsi
         dst->bests_idx[i] = -1;
     }
 
-    for (size_t i = 0; i < NB_WORD; i++)
+    for (size_t i = 0; i < NB_WORD_PACKED; i++)
     {
-        dst->available[i] = src->available[i] & combi == mat[i][idx];
+        PACKED_TYPE tmp = 0;
+        for (int j = 0; j < WORD_PAR_PACKED; j++) {
+            tmp |= (1LL << j) * (combi == mat[i * WORD_PAR_PACKED + j][tmp]);
+        }
+
+        dst->available[i] = src->available[i] & tmp;
     }
 }
 
@@ -390,8 +422,26 @@ double scores(struct Save *data, size_t i)
         rep[j] = 0;
     }
 
-    for (size_t j = 0; j < NB_WORD; j++) {
-        rep[mat[i][j]] += data->available[j];
+    // for (size_t j = 0; j < NB_WORD; j++) {
+    //     rep[mat[i][j]] += (data->available[IDX_CALC(j)] & MASK_CALC(j)) > 1;
+    // }
+
+    for (int combi = 0; combi < NB_COMBI; combi++) {
+        
+
+        for (size_t j = 0; j < NB_WORD_PACKED; j += sizeof(__m256i) / sizeof(PACKED_TYPE)) {
+            alignas(32) PACKED_TYPE buffer[sizeof(__m256i) / sizeof(PACKED_TYPE)];
+
+            __m256i va = _mm256_load_si256((__m256i*)&data->available[j]);
+            __m256i vb = _mm256_load_si256((__m256i*)&mat2[i][combi][j]);
+            __m256i vr = _mm256_and_si256(va, vb);
+
+            _mm256_store_si256((__m256i *)&buffer, vr);
+
+            for (int k = 0; k < sizeof(__m256i) / sizeof(PACKED_TYPE); k++) {
+                rep[combi] += __builtin_popcountll(buffer[k]);
+            }
+        }
     }
 
     // printf("] ");

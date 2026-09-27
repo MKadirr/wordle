@@ -5,6 +5,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include <stdalign.h>
+#include <immintrin.h>
+
 #include "wordle.h"
 
 #include "ocr.h"
@@ -14,14 +17,14 @@
 
 extern const char *dataset[];
 extern const char *used[];
-unsigned char mat[NB_WORD][NB_WORD];
-int combis[NB_WORD][NB_COMBI];
+extern unsigned char mat[NB_WORD_PACKED * WORD_PAR_PACKED][NB_WORD_PACKED * WORD_PAR_PACKED];
+extern int combis[NB_WORD][NB_COMBI];
 
 void print_valid(struct Save *data)
 {
     for (int i = 0; i < NB_WORD; i++)
     {
-        if (data->available[i])
+        if (IS_AVAILABLE(data->available, i))
         {
             if (data->from_wordle[i])
             {
@@ -48,7 +51,7 @@ struct Counter count_remaining(struct Save *data)
     struct Counter count = { 0 };
     for (int i = 0; i < NB_WORD; i++)
     {
-        if (data->available[i])
+        if (IS_AVAILABLE(data->available, i))
         {
             if (data->from_wordle[i])
             {
@@ -94,7 +97,7 @@ int main(int argc, char **argv)
 
     params = parse_arg(argc, argv);
 
-    char available[NB_WORD];
+    alignas(32) PACKED_TYPE available[NB_WORD_PACKED];
     char from_wordle[NB_WORD];
 
     struct Save data = {
@@ -143,9 +146,9 @@ int main(int argc, char **argv)
                 int count2 = 0;
                 for (size_t i = 0; i < NB_WORD; i++) {
                     for (size_t j = 0; j < NB_COMBI; j++) {
-                        if (data.available[i] && combis[i][j] < combi[j]) {
+                        if (IS_AVAILABLE(data.available, i) && combis[i][j] < combi[j]) {
                             // printf("removing word: %s\n" , dataset[i]);
-                            data.available[i] = 0;
+                            data.available[IDX_CALC(i)] &= ~MASK_CALC(i);
                             count2++;
                         }
                     }
@@ -204,9 +207,9 @@ int main(int argc, char **argv)
             int count2 = 0;
             for (size_t i = 0; i < NB_WORD; i++) {
                 for (size_t j = 0; j < NB_COMBI; j++) {
-                    if (data.available[i] && combis[i][j] < combi[j]) {
+                    if (IS_AVAILABLE(data.available, i) && combis[i][j] < combi[j]) {
                         // printf("removing word: %s\n" , dataset[i]);
-                        data.available[i] = 0;
+                        data.available[IDX_CALC(i)] &= ~MASK_CALC(i);
                         count2++;
                     }
                 }
