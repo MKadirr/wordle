@@ -89,7 +89,7 @@ unsigned char result_to_char(const char *buffer) {
     return ret;
 }
 
-void char_to_result(char a, char ret[WORD_SIZE]) {
+void char_to_result(unsigned char a, char ret[WORD_SIZE]) {
 
     for (size_t i = 0; i < WORD_SIZE; i++) {
         // printf("%hhd ", a % 3);
