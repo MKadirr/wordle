@@ -5,10 +5,12 @@ SRC=$(wildcard src/*.c)
 OBJ=${SRC:.c=.o}
 EXE=solver.out
 
-# CFLAGS=-lm -g -O0 -fsanitize=address $(INCLUDE)   # debug
-# CFLAGS=-lm -O3 $(INCLUDE) -mtune=native           # release
-CFLAGS=-lm -O3 $(INCLUDE) -mtune=native -g3         # perf
-# CFLAGS=-lm -O3 $(INCLUDE) -g3                     # perf
+CFLAGS_BASE=-lm $(INCLUDE) -mavx2
+
+# CFLAGS=$(CFLAGS_BASE) -g -O0 -fsanitize=address    # debug
+# CFLAGS=$(CFLAGS_BASE) -O3 -mtune=native           # release
+CFLAGS=$(CFLAGS_BASE) -O3 -mtune=native -g3       # perf
+# CFLAGS=$(CFLAGS_BASE) -O3 -g3                     # perf
 
 # LDFLAGS=-fsanitize=address -lpng                  # ASAN
 LDFLAGS= -lpng -lm                                  # release

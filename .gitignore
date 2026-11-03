@@ -7,3 +7,5 @@ images/
 */__pycache__/
 *perf*
 ocr/img/
+*.old
+*sw[a-z]

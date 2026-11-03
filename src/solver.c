@@ -7,6 +7,9 @@
 #include <math.h>
 #include <time.h>
 
+#include <immintrin.h>
+#include <stdalign.h>
+
 #include "wordle.h"
 
 // data.c
@@ -14,8 +17,11 @@ extern const char *dataset[];
 extern const char *used[];
 
 // main.c
-extern unsigned char mat[NB_WORD][NB_WORD];
-extern int combis[NB_WORD][NB_COMBI];
+alignas(32) unsigned char mat[NB_WORD][NB_WORD_PITCH];
+alignas(32) unsigned char mat_t[NB_WORD][NB_WORD_PITCH];
+
+alignas(32) int combis[NB_WORD][NB_COMBI_PITCH];
+
 extern struct Param params;
 
 double scores(struct Save *data, size_t i);
@@ -187,6 +193,7 @@ void *worker_init(void *arg)
     {
         for (size_t j = 0; j < NB_WORD; j++) {
             mat[j][i] = get_combi(dataset[i], dataset[j]);
+            mat_t[i][j] = mat[j][i];
         }
     }
 }
@@ -269,6 +276,7 @@ void init(struct Save *data, char *buffer, char *result, struct Param params)
         for (size_t j = 0; j < NB_WORD; j++) {
             combis[i][mat[i][j]]++;
         }
+
     }
     fprintf(stderr, "Done\n");
 
@@ -304,6 +312,32 @@ void update_available2(struct Save *data, size_t idx, const unsigned char combi)
     for (size_t i = 0; i < NB_WORD; i++)
     {
         data->available[i] &= combi == mat[i][idx];
+    }
+}
+
+
+void update_available3(struct Save *data, size_t idx, const unsigned char combi)
+{
+    // broadcast combi to each byte of vc
+    __m256i vc = _mm256_set1_epi8(combi);
+
+    for (size_t i = 0; i < NB_WORD; i += sizeof(__m256i))
+    {
+        // load available
+        __m256i va = _mm256_load_si256((__m256i*)&data->available[i]);
+
+        // load matrix (translated one to optimise acces
+        __m256i vb = _mm256_load_si256((__m256i*)&mat_t[idx][i]);
+
+        // cmp combi to each char in matrix
+        __m256i vt = _mm256_cmpeq_epi8(vb, vc);
+
+        // mask with already available
+        __m256i vr = _mm256_and_si256(va, vt);
+           
+        // Store result into the the data  
+        _mm256_store_si256((__m256i *)&data->available[i], vr);
+        // data->available[i] &= combi == mat[i][idx];
     }
 }
 
@@ -382,6 +416,41 @@ void copy_update_avai(struct Save* src, struct Save* dst, size_t idx, const unsi
     }
 }
 
+void copy_update_avai2(struct Save* src, struct Save* dst, size_t idx, const unsigned char combi) {
+    for (int i = 0; i < N_BESTS; i++) 
+    {
+        dst->bests[i] = 1000000.0;
+        dst->bests_idx[i] = -1;
+    }
+
+    // for (size_t i = 0; i < NB_WORD; i++)
+    // {
+    //     dst->available[i] = src->available[i] & combi == mat[i][idx];
+    // }
+    
+    // broadcast combi to each byte of vc
+    __m256i vc = _mm256_set1_epi8(combi);
+
+    for (size_t i = 0; i < NB_WORD; i += sizeof(__m256i))
+    {
+        // load available
+        __m256i va = _mm256_load_si256((__m256i*)&src->available[i]);
+
+        // load matrix (translated one to optimise acces
+        __m256i vb = _mm256_load_si256((__m256i*)&mat_t[idx][i]);
+
+        // cmp combi to each char in matrix
+        __m256i vt = _mm256_cmpeq_epi8(vb, vc);
+
+        // mask with already available
+        __m256i vr = _mm256_and_si256(va, vt);
+           
+        // Store result into the the data  
+        _mm256_store_si256((__m256i *)&dst->available[i], vr);
+        // data->available[i] &= combi == mat[i][idx];
+    }
+}
+
 double scores(struct Save *data, size_t i)
 {
     int rep[NB_COMBI];
@@ -415,7 +484,7 @@ double scores(struct Save *data, size_t i)
             if (data->turn < NB_TENTA - NB_TENTA) {
                 // printf("depth: %d, combi: %d,  word: %s, \n", data->turn, j, dataset[i]);
 
-                copy_update_avai(data, rec_save, i, j);
+                copy_update_avai2(data, rec_save, i, j);
 
                 // copy_save(data, rec_save);
                 // rec_save->turn += 1;
@@ -502,16 +571,3 @@ int find_best(struct Save *status, int nb_thread)
 
     return idx;
 }
-
-/*
-find_best(save):
-    for each word(word):
-        - compute his score
-        - updated_save = select it(word)
-            - find best again
-*/
-
-
-
-
-

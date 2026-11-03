@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 
 #include "wordle.h"
 
@@ -14,8 +15,16 @@
 
 extern const char *dataset[];
 extern const char *used[];
-unsigned char mat[NB_WORD][NB_WORD];
-int combis[NB_WORD][NB_COMBI];
+extern unsigned char mat[NB_WORD][NB_WORD_PITCH];
+extern int combis[NB_WORD][NB_COMBI_PITCH];
+
+struct Param params;
+
+struct Counter
+{
+    int total;
+    int wordle;
+};
 
 void print_valid(struct Save *data)
 {
@@ -37,12 +46,6 @@ void print_valid(struct Save *data)
     }
 }
 
-struct Counter
-{
-    int total;
-    int wordle;
-};
-
 struct Counter count_remaining(struct Save *data)
 {
     struct Counter count = { 0 };
@@ -61,8 +64,12 @@ struct Counter count_remaining(struct Save *data)
     return count;
 }
 
-
-struct Param params;
+void debug_main() {
+    printf("Word's index\n");
+    for (size_t i = 0; i < NB_WORD; i++) {
+        printf("%6zu - %s\n", i, dataset[i]);
+    }
+}
 
 int bench(struct Save* data) {
     struct timeval start, step1, step2;
@@ -114,7 +121,12 @@ int main(int argc, char **argv)
 
     printf("Hello world: %zu words possible\n", NB_WORD);
     init(&data, buffer, result, params);
-    
+
+    if (params.debug) {
+        debug_main();
+        return 0;
+    }
+
     if (params.ocrArgc) {
 
         unsigned char combi[NB_COMBI];
@@ -204,8 +216,13 @@ int main(int argc, char **argv)
             int count2 = 0;
             for (size_t i = 0; i < NB_WORD; i++) {
                 for (size_t j = 0; j < NB_COMBI; j++) {
+                    // printf("removing combi: %d with amount\n", j, combi[j]);
                     if (data.available[i] && combis[i][j] < combi[j]) {
                         // printf("removing word: %s\n" , dataset[i]);
+                        if (!strcmp(dataset[i], "wrest")) {
+                            printf("%s found at %zu\n", dataset[i], i);
+                        }
+
                         data.available[i] = 0;
                         count2++;
                     }

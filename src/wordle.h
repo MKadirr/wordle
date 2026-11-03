@@ -2,6 +2,7 @@
 #define WORDLE_H
 
 #include <stddef.h>
+#include <immintrin.h>
 
 #include "vector.h"
 
@@ -11,9 +12,13 @@
 #define NB_COMBI (3 * 3 * 3 * 3 * 3)
 #define NB_TENTA 6
 
-#define WORD_SIZE 5
+#define CLAMP(A, B) (A + (A % B == 0 ? 0 : B - A % B))
 
-#define N_BESTS 1000
+#define NB_WORD_PITCH CLAMP(NB_WORD, sizeof(__m256i))
+#define NB_COMBI_PITCH CLAMP(NB_COMBI, sizeof(__m256i))
+
+#define WORD_SIZE 5
+#define N_BESTS 10
 
 #define OCR_MAX_PARAMS 16
 
@@ -64,12 +69,13 @@ struct Input {
 struct Param
 {
     const char *real_word;
-    int automat;
-    int nb_thread;
-    int disable;
-    int limited;
-    int prev;
-    int rand;
+    char automat;
+    char nb_thread;
+    char disable;
+    char limited;
+    char prev;
+    char rand;
+    char debug;
     char* load;
     
     int bench;

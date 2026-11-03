@@ -23,7 +23,7 @@ void print_help_usage() {
     printf("    -r              choose a random word for that game\n");
     printf("    -o              lauch Ocr for the discord server images\n");
     printf("    --ocr [ARGV] \\; lauch Ocr for the discord server images with custom ocr arguments (--ocr --help \\; for help)\n");
-
+    printf("    --debug         Print the debug data");
 }
 
 struct Param parse_arg(int argc, char **argv)
@@ -96,6 +96,10 @@ struct Param parse_arg(int argc, char **argv)
         else if (!strcmp(argv[i], "--bench"))
         {
             ret.bench = 1;
+        }
+        else if (!strcmp(argv[i], "--debug"))
+        {
+            ret.debug = 1;
         }
         else if (!strcmp(argv[i], "--hard"))
         {
