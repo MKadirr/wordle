@@ -33,11 +33,7 @@ void copy_save(struct Save* src, struct Save* dst)
     
     // memcpy(dst->from_wordle, src->from_wordle, sizeof(char) * NB_WORD);
 
-    for (int i = 0; i < N_BESTS; i++) 
-    {
-        dst->bests[i] = 1000000.0;
-        dst->bests_idx[i] = -1;
-    }
+    dst->best = -1.0;
 
     dst->turn = src->turn;
     dst->prev = src->prev;
@@ -356,25 +352,6 @@ int update_state(struct Save *data, const char *buffer, char *result)
     return ok;
 }
 
-int insert_best(int idx, double score, int idxs[N_BESTS], double scores[N_BESTS])
-{
-    int tmp_idx;
-    double tmp_score;
-
-    for (int i = 0; i < N_BESTS; i++) {
-        if (scores[i] > score) {
-            tmp_idx = idxs[i];
-            tmp_score = scores[i];
-
-            idxs[i] = idx;
-            scores[i] = score;
-
-            idx = tmp_idx;
-            score = tmp_score;
-        }
-    }
-}
-
 int find_best_thread_less(struct Save *status, size_t start, size_t end) {
     double best_score = 10000000.0;
     // printf("1: %f\n", status->best_score);
@@ -395,20 +372,19 @@ int find_best_thread_less(struct Save *status, size_t start, size_t end) {
             score = 0;
         }
         // printf("%s = %f\n", dataset[i], score);
-        insert_best(i, score, status->bests_idx, status->bests);
+        status->best = i;
+        status->best_score = score;
     }
 
     // printf("%ld, %ld => %d, %f\n", start, end, idx, status->best_score);
 
-    return status->bests_idx[0];
+    return status->best;
 }
 
 void copy_update_avai(struct Save* src, struct Save* dst, size_t idx, const unsigned char combi) {
-    for (int i = 0; i < N_BESTS; i++) 
-    {
-        dst->bests[i] = 1000000.0;
-        dst->bests_idx[i] = -1;
-    }
+    
+    dst->best_score = 1000000.0;
+    dst->best = -1;
 
     for (size_t i = 0; i < NB_WORD; i++)
     {
@@ -417,11 +393,9 @@ void copy_update_avai(struct Save* src, struct Save* dst, size_t idx, const unsi
 }
 
 void copy_update_avai2(struct Save* src, struct Save* dst, size_t idx, const unsigned char combi) {
-    for (int i = 0; i < N_BESTS; i++) 
-    {
-        dst->bests[i] = 1000000.0;
-        dst->bests_idx[i] = -1;
-    }
+
+    dst->best = -1; 1000000.0;
+    dst->best_score = 1000000.0;
 
     // for (size_t i = 0; i < NB_WORD; i++)
     // {
@@ -493,7 +467,7 @@ double scores(struct Save *data, size_t i)
                 int best_idx = find_best_thread_less(rec_save, 0, NB_WORD);
 
                 // moins car le score sera negativé apres
-                E -= p * rec_save->bests[0];
+                E -= p * rec_save->best_score;
 
             }
 
@@ -513,7 +487,7 @@ void *worker(void *arg)
     struct workData *data = (struct workData *)arg;
 
     data->idx = find_best_thread_less(data->data, data->begin, data->end);
-    data->score = data->data->bests[0];
+    data->score = data->data->best_score;
 }
 
 int find_best(struct Save *status, int nb_thread)

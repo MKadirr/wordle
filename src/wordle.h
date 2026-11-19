@@ -18,7 +18,6 @@
 #define NB_COMBI_PITCH CLAMP(NB_COMBI, sizeof(__m256i))
 
 #define WORD_SIZE 5
-#define N_BESTS 10
 
 #define OCR_MAX_PARAMS 16
 
@@ -27,8 +26,8 @@ struct Save
     char *available;
     char *from_wordle;
 
-    double bests[N_BESTS];
-    int bests_idx[N_BESTS];
+    int best;
+    float best_score;
 
     int prev;
     char prev_ans;
