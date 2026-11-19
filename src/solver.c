@@ -22,6 +22,9 @@ alignas(32) unsigned char mat_t[NB_WORD][NB_WORD_PITCH];
 
 alignas(32) int combis[NB_WORD][NB_COMBI_PITCH];
 
+// 
+static char char_to_result[NB_COMBI][WORD_SIZE + 1];
+
 extern struct Param params;
 
 double scores(struct Save *data, size_t i);
@@ -91,7 +94,7 @@ unsigned char result_to_char(const char *buffer) {
     return ret;
 }
 
-void char_to_result(unsigned char a, char ret[WORD_SIZE]) {
+void char_to_result_func(unsigned char a, char ret[WORD_SIZE]) {
 
     for (size_t i = 0; i < WORD_SIZE; i++) {
         // printf("%hhd ", a % 3);
@@ -117,9 +120,7 @@ void char_to_result(unsigned char a, char ret[WORD_SIZE]) {
 }
 
 int valid_hard(int prev, char prev_ans, int idx) {
-
-    char answer[WORD_SIZE + 1] = { 0 }; 
-    char_to_result(prev_ans, answer);
+    char* answer = (char*)char_to_result[(int)prev_ans];
 
     // printf(" prev = %s, idx = %s, char_to_result: %s\n", dataset[prev], dataset[idx], answer);
 
@@ -239,6 +240,9 @@ void init(struct Save *data, char *buffer, char *result, struct Param params)
         data->available[i] = 1;
     }
 
+    for (size_t i = 0; i < NB_COMBI; i++) {
+        char_to_result_func(i, char_to_result[i]);
+    }
 
     size_t j = 0;
     for (size_t i = 0; i < NB_USED; i++)
