@@ -28,7 +28,7 @@ struct Counter
 
 void print_valid(struct Save *data)
 {
-    for (int i = 0; i < NB_WORD; i++)
+    for (size_t i = 0; i < NB_WORD; i++)
     {
         if (data->available[i])
         {
@@ -49,7 +49,7 @@ void print_valid(struct Save *data)
 struct Counter count_remaining(struct Save *data)
 {
     struct Counter count = { 0 };
-    for (int i = 0; i < NB_WORD; i++)
+    for (size_t i = 0; i < NB_WORD; i++)
     {
         if (data->available[i])
         {
@@ -74,16 +74,16 @@ void debug_main() {
 int bench(struct Save* data) {
     struct timeval start, step1, step2;
     
-    int test = gettimeofday(&start, NULL);
+    gettimeofday(&start, NULL);
 
     char buffer[WORD_SIZE + 1];
     char result[WORD_SIZE + 1];
     
     init(data, buffer, result, params);
-    test = gettimeofday(&step1, NULL);
+    gettimeofday(&step1, NULL);
     
     int tmp = find_best(data, params.nb_thread);
-    test = gettimeofday(&step2, NULL);
+    gettimeofday(&step2, NULL);
     fprintf(stderr, "conseil: %s\n", dataset[tmp]);
 
     long start_t = start.tv_sec * 1000000 + start.tv_usec;
@@ -92,13 +92,12 @@ int bench(struct Save* data) {
 
     // printf("%ld;%ld;%ld\n", start_t, step1_t, step2_t);
     printf("%ld;%ld\n", step1_t - start_t, step2_t - step1_t);
+
+    return 0;
 }
 
 int main(int argc, char **argv)
 {
-
-    const char *prev[NB_TENTA][WORD_SIZE];
-
     params = parse_arg(argc, argv);
 
     char available[NB_WORD];
@@ -130,12 +129,6 @@ int main(int argc, char **argv)
     if (params.ocrArgc) {
 
         unsigned char combi[NB_COMBI];
-
-        unsigned char buffer[NB_WORD];
-
-        char c = '\0';
-
-        int count = 0;
 
         printf("Loadings imgs...\n");
 
@@ -173,7 +166,7 @@ int main(int argc, char **argv)
 
         unsigned char combi[NB_COMBI];
 
-        unsigned char buffer[NB_WORD];
+        char buffer[WORD_SIZE];
 
         char c = '\0';
 
@@ -312,7 +305,7 @@ int main(int argc, char **argv)
         // printf("buffer %s\n", buffer);
         // printf("result %s\n", result);
 
-        ok = update_state(&data, buffer, result);
+        ok = update_state(result);
 
         update_available(&data, buffer, result);
 

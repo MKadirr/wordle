@@ -95,7 +95,7 @@ struct Param parse_arg(int argc, char **argv);
 unsigned char result_to_char(const char *buffer);
 void init(struct Save *data, char *buffer, char *result, struct Param params);
 void update_available(struct Save *data, const char *buffer, const char *result);
-int update_state(struct Save *data, const char *buffer, char *result);
+int update_state(char *result);
 int find_best(struct Save *status, int nb_thread);
 
 

@@ -192,12 +192,14 @@ void *worker_init(void *arg)
             mat_t[i][j] = mat[j][i];
         }
     }
+
+    return NULL;
 }
 
 void init_math(int nb_thread)
 {
     struct initData *datas =
-        (struct initData *)calloc(sizeof(struct initData), nb_thread);
+        (struct initData *)calloc(nb_thread, sizeof(struct initData));
 
     int repartition = NB_WORD / nb_thread;
     int a = 0;
@@ -213,7 +215,7 @@ void init_math(int nb_thread)
 
     datas[nb_thread - 1].end = NB_WORD;
 
-    pthread_t *threads = (pthread_t *)calloc(sizeof(pthread_t), nb_thread);
+    pthread_t *threads = (pthread_t *)calloc(nb_thread, sizeof(pthread_t));
 
     for (int i = 0; i < nb_thread; i++)
     {
@@ -232,7 +234,7 @@ void init_math(int nb_thread)
 
 void init(struct Save *data, char *buffer, char *result, struct Param params)
 {
-    for (int i = 0; i < NB_WORD; i++)
+    for (size_t i = 0; i < NB_WORD; i++)
     {
         data->available[i] = 1;
     }
@@ -337,11 +339,9 @@ void update_available3(struct Save *data, size_t idx, const unsigned char combi)
     }
 }
 
-int update_state(struct Save *data, const char *buffer, char *result)
+int update_state(char *result)
 {
     int ok = 0;
-
-    int already_m = 0;
 
     for (int i = 0; i < WORD_SIZE; i++) {
         if (result[i] == 'y') {
@@ -353,11 +353,6 @@ int update_state(struct Save *data, const char *buffer, char *result)
 }
 
 int find_best_thread_less(struct Save *status, size_t start, size_t end) {
-    double best_score = 10000000.0;
-    // printf("1: %f\n", status->best_score);
-
-    int idx = -1;
-
     // printf("0 ");
     for (size_t i = start; i < end; i++)
     {
@@ -388,13 +383,13 @@ void copy_update_avai(struct Save* src, struct Save* dst, size_t idx, const unsi
 
     for (size_t i = 0; i < NB_WORD; i++)
     {
-        dst->available[i] = src->available[i] & combi == mat[i][idx];
+        dst->available[i] = src->available[i] & (combi == mat[i][idx]);
     }
 }
 
 void copy_update_avai2(struct Save* src, struct Save* dst, size_t idx, const unsigned char combi) {
 
-    dst->best = -1; 1000000.0;
+    dst->best = -1;
     dst->best_score = 1000000.0;
 
     // for (size_t i = 0; i < NB_WORD; i++)
@@ -464,7 +459,7 @@ double scores(struct Save *data, size_t i)
                 // rec_save->turn += 1;
                 // update_available2(rec_save, i, (const unsigned char)j);
 
-                int best_idx = find_best_thread_less(rec_save, 0, NB_WORD);
+                find_best_thread_less(rec_save, 0, NB_WORD);
 
                 // moins car le score sera negativé apres
                 E -= p * rec_save->best_score;
@@ -488,12 +483,14 @@ void *worker(void *arg)
 
     data->idx = find_best_thread_less(data->data, data->begin, data->end);
     data->score = data->data->best_score;
+
+    return NULL;
 }
 
 int find_best(struct Save *status, int nb_thread)
 {
     struct workData *datas =
-        (struct workData *)calloc(sizeof(struct workData), nb_thread);
+        (struct workData *)calloc(nb_thread, sizeof(struct workData));
 
     int repartition = NB_WORD / nb_thread;
     int a = 0;
@@ -510,7 +507,7 @@ int find_best(struct Save *status, int nb_thread)
 
     datas[nb_thread - 1].end = NB_WORD;
 
-    pthread_t *threads = (pthread_t *)calloc(sizeof(pthread_t), nb_thread);
+    pthread_t *threads = (pthread_t *)calloc(nb_thread, sizeof(pthread_t));
 
     for (int i = 0; i < nb_thread; i++)
     {

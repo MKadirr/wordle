@@ -41,7 +41,7 @@ struct Param parse_arg(int argc, char **argv)
         else if (!strcmp(argv[i], "-o")) {
             ret.ocrArgc = 0;
             char *ocr_argv[] = { "ocr/ocr.exe", "--log-level", "info", NULL };
-            for (ret.ocrArgc; ocr_argv[ret.ocrArgc]; ret.ocrArgc++) {
+            for (; ocr_argv[ret.ocrArgc]; ret.ocrArgc++) {
                 ret.ocrArgv[ret.ocrArgc] = ocr_argv[ret.ocrArgc];
             }
         }

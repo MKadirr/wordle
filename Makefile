@@ -1,11 +1,11 @@
 CC=gcc
 INCLUDE=-Iocr/src
 
-SRC=$(wildcard src/*.c)
+SRC=src/data.c src/main.c src/solver.c src/utils.c src/arg_parser.c
 OBJ=${SRC:.c=.o}
 EXE=solver.out
 
-CFLAGS_BASE=-lm $(INCLUDE) -mavx2
+CFLAGS_BASE=-lm $(INCLUDE) -mavx2 -Wall -Werror -Wextra
 
 # CFLAGS=$(CFLAGS_BASE) -g -O0 -fsanitize=address    # debug
 # CFLAGS=$(CFLAGS_BASE) -O3 -mtune=native           # release
